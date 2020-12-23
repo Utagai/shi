@@ -1,4 +1,4 @@
-<p align="center"><img src="./rsrc/banner/shi_banner.png"></img></p>
+<p align="center"><img src="./rsrc/banner/shi.png"></img></p>
 
 # shi
 
