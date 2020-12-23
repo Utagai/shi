@@ -97,46 +97,49 @@ impl<'a, S> Shell<'a, S> {
         Ok(())
     }
 
+    pub fn eval(&mut self, line: String) -> Result<String> {
+        self.rl.add_history_entry(line.as_str());
+        let mut splits = line.split(' ');
+        let potential_cmd = match splits.nth(0) {
+            Some(cmd) => cmd,
+            None => {
+                println!("empty!");
+                return Ok(String::from(""));
+            }
+        };
+        let args: Vec<String> = splits.map(|s| s.to_owned()).collect();
+        match self.cmds.get::<str>(&potential_cmd) {
+            Some(cmd) => {
+                cmd.validate_args(&args)?;
+                return cmd.execute(&mut self.state, &args);
+            }
+            None => {
+                // Fallback to builtins. Then error if we got nothing.
+                let builtins_rc = self.builtins.clone();
+                match builtins_rc.get::<str>(&potential_cmd) {
+                    Some(builtin) => {
+                        builtin.validate_args(&args)?;
+                        return builtin.execute(self, &args);
+                    }
+                    None => println!("Unrecognized command: '{}'", potential_cmd),
+                }
+            }
+        };
+        Ok(String::from(""))
+    }
+
     pub fn run(&mut self) -> Result<()> {
         while !self.terminate {
             let input = self.rl.readline(self.prompt);
 
             match input {
-                Ok(line) => {
-                    self.rl.add_history_entry(line.as_str());
-                    let mut splits = line.split(' ');
-                    let potential_cmd = match splits.nth(0) {
-                        Some(cmd) => cmd,
-                        None => {
-                            println!("empty!");
-                            continue;
-                        }
-                    };
-                    let args: Vec<String> = splits.map(|s| s.to_owned()).collect();
-                    match self.cmds.get::<str>(&potential_cmd) {
-                        Some(cmd) => {
-                            if let Err(err) = cmd.validate_args(&args) {
-                                println!("{:?}", err);
-                                continue;
-                            }
-                            println!("{}", cmd.execute(&mut self.state, &args)?);
-                        }
-                        None => {
-                            // Fallback to builtins. Then error if we got nothing.
-                            let builtins_rc = self.builtins.clone();
-                            match builtins_rc.get::<str>(&potential_cmd) {
-                                Some(builtin) => {
-                                    if let Err(err) = builtin.validate_args(&args) {
-                                        println!("{:?}", err);
-                                        continue;
-                                    }
-                                    println!("{}", builtin.execute(self, &args)?);
-                                }
-                                None => println!("Unrecognized command: '{}'", potential_cmd),
-                            }
-                        }
-                    };
-                }
+                Ok(line) => match self.eval(line) {
+                    Ok(output) => println!("{}", output),
+                    Err(err) => {
+                        println!("{:?}", err);
+                        return Ok(());
+                    }
+                },
                 Err(ReadlineError::Interrupted) => {
                     println!("CTRL-C");
                     break;
