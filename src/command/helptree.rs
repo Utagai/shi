@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::marker::PhantomData;
 
 use anyhow::{bail, Result};
@@ -46,6 +45,12 @@ impl<'a, S> HelpTreeCommand<'a, S> {
         }
     }
 
+    // TODO: This works, but it isn't designed in the best way possible. What we should be doing is
+    // taking the commands and iterating them and their children into a tree. Then, we should pass
+    // the tree of strings (or, whatever type holding the information we want to print) to a
+    // function like this, responsible for rendering the tree.
+    // Right now, for example, there isn't any way to test this code without creating a shell,
+    // which is a code smell.
     fn add_name_to_lines(&self, ctx: &IndentContext, lines: &mut Vec<String>, name: &str) {
         let mut line_elems: Vec<&str> = Vec::new();
         for parent_was_last in &ctx.parent_lastness_chain {
