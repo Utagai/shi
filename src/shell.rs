@@ -3,18 +3,20 @@ use std::rc::Rc;
 
 // TODO: We should probably be using thiserror if this is going to be factored out into a library.
 use anyhow::{bail, Result};
-use rustyline::{error::ReadlineError, Editor};
+use rustyline::error::ReadlineError;
 
 use crate::command::{
     builtin::{ExitCommand, HelpCommand, HelpTreeCommand, HistoryCommand},
     Command,
 };
 
+use crate::readline::Readline;
+
 pub struct Shell<'a, S> {
     prompt: &'a str,
     pub(crate) cmds: HashMap<String, Box<dyn Command<State = S> + 'a>>,
     pub(crate) builtins: Rc<HashMap<String, Box<dyn Command<State = Self> + 'a>>>,
-    pub(crate) rl: Editor<()>,
+    pub(crate) rl: Readline,
     history_file: Option<&'a str>,
     state: S,
     pub(crate) terminate: bool,
@@ -48,7 +50,7 @@ impl<'a, S> Shell<'a, S> {
     pub fn new(prompt: &'a str) -> Shell<()> {
         Shell {
             prompt,
-            rl: Editor::<()>::new(),
+            rl: Readline::new(),
             cmds: HashMap::new(),
             builtins: Rc::new(Shell::build_builtins()),
             history_file: None,
@@ -63,7 +65,7 @@ impl<'a, S> Shell<'a, S> {
     {
         Shell {
             prompt,
-            rl: Editor::<()>::new(),
+            rl: Readline::new(),
             cmds: HashMap::new(),
             builtins: Rc::new(Shell::build_builtins()),
             history_file: None,

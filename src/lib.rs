@@ -1,4 +1,5 @@
 pub mod command;
+mod readline;
 pub mod shell;
 
 #[cfg(test)]
