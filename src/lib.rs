@@ -68,10 +68,19 @@ mod test {
                         Ok(String::from("Added 'title'"))
                     },
                 )),
-                Box::new(BasicCommand::new("isbn", |the_lst: &mut Vec<String>, _| {
-                    the_lst.push("isbn".to_owned());
-                    Ok(String::from("Added 'isbn'"))
-                })),
+                Box::new(ParentCommand::new(
+                    "isbn",
+                    vec![
+                        Box::new(BasicCommand::new("eu", |the_lst: &mut Vec<String>, _| {
+                            the_lst.push("eu".to_owned());
+                            Ok(String::from("Added 'eu'"))
+                        })),
+                        Box::new(BasicCommand::new("us", |the_lst: &mut Vec<String>, _| {
+                            the_lst.push("us".to_owned());
+                            Ok(String::from("Added 'us'"))
+                        })),
+                    ],
+                )),
             ],
         ))?;
         shell.register(CustomCommand::new())?;

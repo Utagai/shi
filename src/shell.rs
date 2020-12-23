@@ -6,7 +6,7 @@ use anyhow::{bail, Result};
 use rustyline::{error::ReadlineError, Editor};
 
 use crate::command::{
-    builtin::{ExitCommand, HelpCommand, HistoryCommand},
+    builtin::{ExitCommand, HelpCommand, HelpTreeCommand, HistoryCommand},
     Command,
 };
 
@@ -30,6 +30,7 @@ impl<'a, S> Shell<'a, S> {
         // to.
         let builtins_vec: Vec<Box<dyn Command<State = Shell<S>>>> = vec![
             Box::new(HelpCommand::new()),
+            Box::new(HelpTreeCommand::new()),
             Box::new(ExitCommand::new()),
             Box::new(HistoryCommand::new()),
         ];

@@ -3,6 +3,7 @@ use anyhow::Result;
 pub mod echo;
 pub mod exit;
 pub mod help;
+pub mod helptree;
 pub mod history;
 
 pub mod example {
@@ -12,6 +13,7 @@ pub mod example {
 pub(crate) mod builtin {
     pub use super::exit::ExitCommand;
     pub use super::help::HelpCommand;
+    pub use super::helptree::HelpTreeCommand;
     pub use super::history::HistoryCommand;
 }
 
