@@ -35,23 +35,25 @@ pub struct DefaultTokenizer {
     quotations: Vec<char>,
 }
 
+#[derive(Debug)]
+struct QuoteLoc {
+    pos: usize,
+    quotation: char,
+}
+
+#[derive(Debug)]
+struct QuotePair {
+    start: usize,
+    end: usize,
+    quotation: char,
+}
+
 impl DefaultTokenizer {
     pub fn new(quotations: Vec<char>) -> DefaultTokenizer {
         DefaultTokenizer { quotations }
     }
-
-    // Globs together parts of the string that are surrounded by quotation marks.
-    // In practice for shi, this refers to ASCII " and '.
-    fn split_into_quote_blobs<'a>(&self, line: &'a str) -> Vec<&'a str> {
-        // This is not a particularly fast algorithm. But it doesn't need to be. Instead, we opt
-        // for clarity.
-
-        // First, identify where all the quotes are.
-        #[derive(Debug)]
-        struct QuoteLoc {
-            pos: usize,
-            quotation: char,
-        }
+    /// Finds quotes in the line string, and returns them.
+    fn find_quotes(&self, line: &str) -> Vec<QuoteLoc> {
         let mut quote_locs: Vec<QuoteLoc> = Vec::new();
 
         for (i, ch) in line.char_indices() {
@@ -63,15 +65,12 @@ impl DefaultTokenizer {
             }
         }
 
-        #[derive(Debug)]
-        struct QuotePair {
-            start: usize,
-            end: usize,
-            quotation: char,
-        }
-        let mut quote_pairs: Vec<QuotePair> = Vec::new();
+        quote_locs
+    }
 
-        // Now, go through those quote locations and pair them accordingly.
+    /// Finds pairings of balanced quotes in the string, given a series of quote locations.
+    fn find_quote_pairs(&self, quote_locs: Vec<QuoteLoc>) -> Vec<QuotePair> {
+        let mut quote_pairs: Vec<QuotePair> = Vec::new();
         let mut start_idx = 0;
         let mut next_idx = None;
         while start_idx < quote_locs.len() {
@@ -102,17 +101,20 @@ impl DefaultTokenizer {
             next_idx = None;
         }
 
-        if quote_pairs.is_empty() {
-            // If no quotes matched, then just pretend we don't care.
-            return vec![line];
-        }
+        quote_pairs
+    }
 
-        // Finally, use the pair ranges to construct the individual slices.
+    /// Creates slices into the original line slice based on the given quote pairs.
+    fn construct_slices_from_pairs<'a>(
+        &self,
+        line: &'a str,
+        pairs: Vec<QuotePair>,
+    ) -> Vec<&'a str> {
         let mut blobs: Vec<&str> = Vec::new();
 
         let mut cur = 0;
         // Now we have the pairs. Get the slices.
-        for pair in quote_pairs.iter() {
+        for pair in pairs.iter() {
             if cur != pair.start {
                 blobs.push(&line[cur..pair.start]);
             }
@@ -120,13 +122,37 @@ impl DefaultTokenizer {
             cur = pair.end + 1;
         }
 
-        if let Some(quote_pair) = quote_pairs.last() {
+        if let Some(quote_pair) = pairs.last() {
             if quote_pair.end + 1 != line.len() {
                 blobs.push(&line[quote_pair.end + 1..]);
             }
         }
 
-        blobs
+        return blobs;
+    }
+
+    /// Globs together parts of the string that are surrounded by quotation marks.
+    ///
+    /// In practice for shi, this refers to ASCII " and ', but it is written generally for any set
+    /// of quotation characters. I expect I may need to increase that list, maybe. Or extend this to
+    /// be customizable by users.
+    fn split_into_quote_blobs<'a>(&self, line: &'a str) -> Vec<&'a str> {
+        // This is not a particularly fast algorithm. But it doesn't need to be. Instead, we opt
+        // for clarity.
+
+        // First, identify where all the quotes are.
+        let quote_locs = self.find_quotes(line);
+
+        // Now, go through those quote locations and pair them accordingly.
+        let quote_pairs = self.find_quote_pairs(quote_locs);
+
+        // If no quotes matched, then just pretend we don't care (because we don't).
+        if quote_pairs.is_empty() {
+            return vec![line];
+        }
+
+        // Finally, use the pair ranges to construct the individual slices.
+        self.construct_slices_from_pairs(line, quote_pairs)
     }
 
     fn split_by_space(&self, line_bits: Vec<&str>) -> Vec<&str> {
