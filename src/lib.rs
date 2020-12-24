@@ -1,5 +1,6 @@
 pub mod command;
 mod parser;
+mod tokenizer;
 mod readline;
 pub mod shell;
 
