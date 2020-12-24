@@ -41,11 +41,8 @@ impl DefaultTokenizer {
     }
 
     // Globs together parts of the string that are surrounded by quotation marks.
-    // Precisely, this refers to ASCII " and '.
-    // We could support more, but we don't. There's no reason for it.
-    // Technically, we could make this a trait and expose these are methods, and let users
-    // implement their own parsing behavior, but that seems overkill for now.
-    fn glob_quote_bits<'a>(&self, line: &'a str) -> Vec<&'a str> {
+    // In practice for shi, this refers to ASCII " and '.
+    fn split_into_quote_blobs<'a>(&self, line: &'a str) -> Vec<&'a str> {
         // This is not a particularly fast algorithm. But it doesn't need to be. Instead, we opt
         // for clarity.
 
@@ -55,8 +52,8 @@ impl DefaultTokenizer {
             pos: usize,
             quotation: char,
         }
-
         let mut quote_locs: Vec<QuoteLoc> = Vec::new();
+
         for (i, ch) in line.char_indices() {
             if self.quotations.contains(&ch) {
                 quote_locs.push(QuoteLoc {
@@ -65,12 +62,6 @@ impl DefaultTokenizer {
                 })
             }
         }
-
-        if quote_locs.len() == 0 {
-            return vec![line];
-        }
-
-        println!("QUOTE LOC: {:?}", quote_locs);
 
         #[derive(Debug)]
         struct QuotePair {
@@ -83,10 +74,7 @@ impl DefaultTokenizer {
         // Now, go through those quote locations and pair them accordingly.
         let mut start_idx = 0;
         let mut next_idx = None;
-        loop {
-            if start_idx >= quote_locs.len() {
-                break;
-            }
+        while start_idx < quote_locs.len() {
             let start = quote_locs.get(start_idx).unwrap();
             for i in start_idx + 1..quote_locs.len() {
                 let current = quote_locs.get(i).unwrap();
@@ -114,32 +102,31 @@ impl DefaultTokenizer {
             next_idx = None;
         }
 
-        println!("QUOTE PAIRS: {:?}", quote_pairs);
-
         if quote_pairs.is_empty() {
             // If no quotes matched, then just pretend we don't care.
             return vec![line];
         }
 
-        let mut bits: Vec<&str> = Vec::new();
+        // Finally, use the pair ranges to construct the individual slices.
+        let mut blobs: Vec<&str> = Vec::new();
 
         let mut cur = 0;
         // Now we have the pairs. Get the slices.
         for pair in quote_pairs.iter() {
             if cur != pair.start {
-                bits.push(&line[cur..pair.start]);
+                blobs.push(&line[cur..pair.start]);
             }
-            bits.push(&line[pair.start..pair.end + 1]);
+            blobs.push(&line[pair.start..pair.end + 1]);
             cur = pair.end + 1;
         }
 
         if let Some(quote_pair) = quote_pairs.last() {
             if quote_pair.end + 1 != line.len() {
-                bits.push(&line[quote_pair.end + 1..]);
+                blobs.push(&line[quote_pair.end + 1..]);
             }
         }
 
-        bits
+        blobs
     }
 
     fn split_by_space(&self, line_bits: Vec<&str>) -> Vec<&str> {
@@ -149,7 +136,7 @@ impl DefaultTokenizer {
 
 impl Tokenizer for DefaultTokenizer {
     fn preprocess(&self, line: &str) -> Vec<&str> {
-        let line_bits_with_quotes_globbed = self.glob_quote_bits(line);
+        let line_bits_with_quotes_globbed = self.split_into_quote_blobs(line);
 
         self.split_by_space(line_bits_with_quotes_globbed)
     }
@@ -166,7 +153,7 @@ mod preprocess_tests {
         fn basic_single() {
             let preproc = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.glob_quote_bits("foo 'hi there!' btw hello"),
+                preproc.split_into_quote_blobs("foo 'hi there!' btw hello"),
                 vec!["foo ", "'hi there!'", " btw hello"]
             );
         }
@@ -175,7 +162,7 @@ mod preprocess_tests {
         fn basic_double() {
             let preproc = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.glob_quote_bits("foo \"hi there!\" btw hello"),
+                preproc.split_into_quote_blobs("foo \"hi there!\" btw hello"),
                 vec!["foo ", "\"hi there!\"", " btw hello"]
             );
         }
@@ -184,7 +171,7 @@ mod preprocess_tests {
         fn no_quotes() {
             let preproc = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.glob_quote_bits("foo hi there! btw hello"),
+                preproc.split_into_quote_blobs("foo hi there! btw hello"),
                 vec!["foo hi there! btw hello"]
             );
         }
@@ -193,7 +180,7 @@ mod preprocess_tests {
         fn quote_at_left() {
             let preproc = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.glob_quote_bits("'foo hi' there! btw hello"),
+                preproc.split_into_quote_blobs("'foo hi' there! btw hello"),
                 vec!["'foo hi'", " there! btw hello"]
             );
         }
@@ -202,7 +189,7 @@ mod preprocess_tests {
         fn quote_at_right() {
             let preproc = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.glob_quote_bits("there! btw hello 'foo hi'"),
+                preproc.split_into_quote_blobs("there! btw hello 'foo hi'"),
                 vec!["there! btw hello ", "'foo hi'"]
             );
         }
@@ -211,7 +198,7 @@ mod preprocess_tests {
         fn single_dangling() {
             let preproc = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.glob_quote_bits("there! btw hello 'foo hi"),
+                preproc.split_into_quote_blobs("there! btw hello 'foo hi"),
                 vec!["there! btw hello 'foo hi"]
             );
         }
@@ -220,7 +207,7 @@ mod preprocess_tests {
         fn multiple_dangling() {
             let preproc = DefaultTokenizer::new(vec!['"', '\'', '|']);
             assert_eq!(
-                preproc.glob_quote_bits("abc'defghijklmnopq\"rstuvwxyz|vvvv|v"),
+                preproc.split_into_quote_blobs("abc'defghijklmnopq\"rstuvwxyz|vvvv|v"),
                 vec!["abc'defghijklmnopq\"rstuvwxyz", "|vvvv|", "v"]
             );
         }
@@ -229,7 +216,7 @@ mod preprocess_tests {
         fn one_success_amongst_dangling() {
             let preproc = DefaultTokenizer::new(vec!['"', '\'', '|', '-', '.']);
             assert_eq!(
-                preproc.glob_quote_bits("abc'defghi.jklmnopq\"rstu\"vwx-yz|vvvv|v"),
+                preproc.split_into_quote_blobs("abc'defghi.jklmnopq\"rstu\"vwx-yz|vvvv|v"),
                 vec!["abc'defghi.jklmnopq", "\"rstu\"", "vwx-yz", "|vvvv|", "v"]
             );
         }
@@ -238,7 +225,7 @@ mod preprocess_tests {
         fn dangling_inside_matched_quotes() {
             let preproc = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.glob_quote_bits("there! btw hello 'foo\" hi'"),
+                preproc.split_into_quote_blobs("there! btw hello 'foo\" hi'"),
                 vec!["there! btw hello ", "'foo\" hi'"]
             );
         }
@@ -247,7 +234,7 @@ mod preprocess_tests {
         fn dangling_after_matched_quotes() {
             let preproc = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.glob_quote_bits("there! btw 'foo hi' \" hello"),
+                preproc.split_into_quote_blobs("there! btw 'foo hi' \" hello"),
                 vec!["there! btw ", "'foo hi'", " \" hello"]
             );
         }
@@ -256,7 +243,7 @@ mod preprocess_tests {
         fn dangling_before_matched_quotes() {
             let preproc = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.glob_quote_bits("there!\" btw 'foo hi' hello"),
+                preproc.split_into_quote_blobs("there!\" btw 'foo hi' hello"),
                 vec!["there!\" btw ", "'foo hi'", " hello"]
             );
         }
@@ -265,7 +252,7 @@ mod preprocess_tests {
         fn multiple_non_overlapping_pairs() {
             let preproc = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.glob_quote_bits("abc'defg'hijk'lmno'pqr'stuvwx'yz"),
+                preproc.split_into_quote_blobs("abc'defg'hijk'lmno'pqr'stuvwx'yz"),
                 vec!["abc", "'defg'", "hijk", "'lmno'", "pqr", "'stuvwx'", "yz"]
             );
         }
@@ -274,7 +261,7 @@ mod preprocess_tests {
         fn many_kinds_of_quotes() {
             let preproc = DefaultTokenizer::new(vec!['"', '\'', '|']);
             assert_eq!(
-                preproc.glob_quote_bits("abc'defg'hijk'lmno'pqr'stuvwx'yz|vvvv|v"),
+                preproc.split_into_quote_blobs("abc'defg'hijk'lmno'pqr'stuvwx'yz|vvvv|v"),
                 vec!["abc", "'defg'", "hijk", "'lmno'", "pqr", "'stuvwx'", "yz", "|vvvv|", "v"]
             );
         }
@@ -283,7 +270,7 @@ mod preprocess_tests {
         fn only_one_quote() {
             let preproc = DefaultTokenizer::new(vec!['|']);
             assert_eq!(
-                preproc.glob_quote_bits("abc'defg'hijk'lmno'pqr'stuvwx'yz|vvvv|v"),
+                preproc.split_into_quote_blobs("abc'defg'hijk'lmno'pqr'stuvwx'yz|vvvv|v"),
                 vec!["abc'defg'hijk'lmno'pqr'stuvwx'yz", "|vvvv|", "v"]
             );
         }
@@ -292,8 +279,32 @@ mod preprocess_tests {
         fn multiple_kinds_of_quotes() {
             let preproc = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.glob_quote_bits("abc'defg'hijklmnopqr\"stuvwx\"yz"),
+                preproc.split_into_quote_blobs("abc'defg'hijklmnopqr\"stuvwx\"yz"),
                 vec!["abc", "'defg'", "hijklmnopqr", "\"stuvwx\"", "yz"]
+            );
+        }
+
+        #[test]
+        fn empty_string() {
+            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+            assert_eq!(preproc.split_into_quote_blobs(""), vec![""]);
+        }
+
+        #[test]
+        fn only_quotes() {
+            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+            assert_eq!(
+                preproc.split_into_quote_blobs("''''''''"),
+                vec!["''", "''", "''", "''"]
+            );
+        }
+
+        #[test]
+        fn mixture_of_only_quotes() {
+            let preproc = DefaultTokenizer::new(vec!['|', '\'']);
+            assert_eq!(
+                preproc.split_into_quote_blobs("''||'|''|'||''|'|"),
+                vec!["''", "||", "'|'", "'|'", "||", "''", "|'|"]
             );
         }
     }
