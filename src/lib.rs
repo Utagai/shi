@@ -1,4 +1,5 @@
 pub mod command;
+mod parser;
 mod readline;
 pub mod shell;
 
