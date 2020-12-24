@@ -28,7 +28,7 @@ impl Parser {
 }
 
 trait Tokenizer {
-    fn preprocess<'a>(&self, line: &'a str) -> Vec<&'a str>;
+    fn tokenize<'a>(&self, line: &'a str) -> Vec<&'a str>;
 }
 
 pub struct DefaultTokenizer {
@@ -185,7 +185,9 @@ impl DefaultTokenizer {
                     // Since this is not protected by surrounding quotes, we _do_ want to split
                     // this. We simply do it by space, and iterate the split result, adding them
                     // onto splitted parts. extend() helps us do this elegantly.
-                    splitted_parts.extend(s.split(' '));
+                    // Small note though: we don't want to add empty strings, since they are
+                    // meaningless and are likely just the result of trailing/leading whitespace.
+                    splitted_parts.extend(s.split(' ').filter(|s| !s.is_empty()));
                 }
                 Blob::Quoted(s) => {
                     // We don't want to split inside the quote, so just add this immediately.
@@ -199,7 +201,7 @@ impl DefaultTokenizer {
 }
 
 impl Tokenizer for DefaultTokenizer {
-    fn preprocess<'a>(&self, line: &'a str) -> Vec<&'a str> {
+    fn tokenize<'a>(&self, line: &'a str) -> Vec<&'a str> {
         let line_bits_with_quotes_globbed = self.split_into_quote_blobs(line);
 
         self.split_by_space(line_bits_with_quotes_globbed)
@@ -207,17 +209,47 @@ impl Tokenizer for DefaultTokenizer {
 }
 
 #[cfg(test)]
-mod preprocess_tests {
+mod tokenize_tests {
     use super::*;
+
+    // Since we test the two functions that comprise this individually, and the implementation of
+    // this function is just a composition, most of the coverage is already handled.
+    // So, we give one big and complex case.
+    #[test]
+    fn tokenize_test() {
+        let tokenizer = DefaultTokenizer::new(vec!['"', '\'', '|', '-']);
+        assert_eq!(
+            tokenizer.tokenize(
+                "bar 'foo is here' and quux is not\n necessarily 'here'\" b\"ut you co|uld say 'there'-",
+            ),
+            vec![
+                "bar",
+                "'foo is here'",
+                "and",
+                "quux",
+                "is",
+                "not\n",
+                "necessarily",
+                "'here'",
+                "\" b\"",
+                "ut",
+                "you",
+                "co|uld",
+                "say",
+                "'there'",
+                "-",
+            ]
+        )
+    }
 
     mod glob_quotes {
         use super::*;
 
         #[test]
         fn basic_single() {
-            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.split_into_quote_blobs("foo 'hi there!' btw hello"),
+                tokenizer.split_into_quote_blobs("foo 'hi there!' btw hello"),
                 vec![
                     Blob::n("foo "),
                     Blob::q("'hi there!'"),
@@ -228,9 +260,9 @@ mod preprocess_tests {
 
         #[test]
         fn basic_double() {
-            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.split_into_quote_blobs("foo \"hi there!\" btw hello"),
+                tokenizer.split_into_quote_blobs("foo \"hi there!\" btw hello"),
                 vec![
                     Blob::n("foo "),
                     Blob::q("\"hi there!\""),
@@ -241,45 +273,45 @@ mod preprocess_tests {
 
         #[test]
         fn no_quotes() {
-            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.split_into_quote_blobs("foo hi there! btw hello"),
+                tokenizer.split_into_quote_blobs("foo hi there! btw hello"),
                 vec![Blob::n("foo hi there! btw hello")]
             );
         }
 
         #[test]
         fn quote_at_left() {
-            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.split_into_quote_blobs("'foo hi' there! btw hello"),
+                tokenizer.split_into_quote_blobs("'foo hi' there! btw hello"),
                 vec![Blob::q("'foo hi'"), Blob::n(" there! btw hello")]
             );
         }
 
         #[test]
         fn quote_at_right() {
-            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.split_into_quote_blobs("there! btw hello 'foo hi'"),
+                tokenizer.split_into_quote_blobs("there! btw hello 'foo hi'"),
                 vec![Blob::n("there! btw hello "), Blob::q("'foo hi'")]
             );
         }
 
         #[test]
         fn single_dangling() {
-            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.split_into_quote_blobs("there! btw hello 'foo hi"),
+                tokenizer.split_into_quote_blobs("there! btw hello 'foo hi"),
                 vec![Blob::n("there! btw hello 'foo hi")]
             );
         }
 
         #[test]
         fn multiple_dangling() {
-            let preproc = DefaultTokenizer::new(vec!['"', '\'', '|']);
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'', '|']);
             assert_eq!(
-                preproc.split_into_quote_blobs("abc'defghijklmnopq\"rstuvwxyz|vvvv|v"),
+                tokenizer.split_into_quote_blobs("abc'defghijklmnopq\"rstuvwxyz|vvvv|v"),
                 vec![
                     Blob::n("abc'defghijklmnopq\"rstuvwxyz"),
                     Blob::q("|vvvv|"),
@@ -290,9 +322,9 @@ mod preprocess_tests {
 
         #[test]
         fn one_success_amongst_dangling() {
-            let preproc = DefaultTokenizer::new(vec!['"', '\'', '|', '-', '.']);
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'', '|', '-', '.']);
             assert_eq!(
-                preproc.split_into_quote_blobs("abc'defghi.jklmnopq\"rstu\"vwx-yz|vvvv|v"),
+                tokenizer.split_into_quote_blobs("abc'defghi.jklmnopq\"rstu\"vwx-yz|vvvv|v"),
                 vec![
                     Blob::n("abc'defghi.jklmnopq"),
                     Blob::q("\"rstu\""),
@@ -305,18 +337,18 @@ mod preprocess_tests {
 
         #[test]
         fn dangling_inside_matched_quotes() {
-            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.split_into_quote_blobs("there! btw hello 'foo\" hi'"),
+                tokenizer.split_into_quote_blobs("there! btw hello 'foo\" hi'"),
                 vec![Blob::n("there! btw hello "), Blob::q("'foo\" hi'")]
             );
         }
 
         #[test]
         fn dangling_after_matched_quotes() {
-            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.split_into_quote_blobs("there! btw 'foo hi' \" hello"),
+                tokenizer.split_into_quote_blobs("there! btw 'foo hi' \" hello"),
                 vec![
                     Blob::n("there! btw "),
                     Blob::q("'foo hi'"),
@@ -327,9 +359,9 @@ mod preprocess_tests {
 
         #[test]
         fn dangling_before_matched_quotes() {
-            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.split_into_quote_blobs("there!\" btw 'foo hi' hello"),
+                tokenizer.split_into_quote_blobs("there!\" btw 'foo hi' hello"),
                 vec![
                     Blob::n("there!\" btw "),
                     Blob::q("'foo hi'"),
@@ -339,10 +371,54 @@ mod preprocess_tests {
         }
 
         #[test]
-        fn multiple_non_overlapping_pairs() {
-            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+        fn dangling_at_start() {
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.split_into_quote_blobs("abc'defg'hijk'lmno'pqr'stuvwx'yz"),
+                tokenizer.split_into_quote_blobs("'there! btw foo hi hello"),
+                vec![Blob::n("'there! btw foo hi hello")]
+            );
+        }
+
+        #[test]
+        fn dangling_at_end() {
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'']);
+            assert_eq!(
+                tokenizer.split_into_quote_blobs("there! btw foo hi hello'"),
+                vec![Blob::n("there! btw foo hi hello'")]
+            );
+        }
+
+        #[test]
+        fn dangling_at_start_with_pair() {
+            let tokenizer = DefaultTokenizer::new(vec!['|', '\'']);
+            assert_eq!(
+                tokenizer.split_into_quote_blobs("'there! btw |foo |hi hello"),
+                vec![
+                    Blob::n("'there! btw "),
+                    Blob::q("|foo |"),
+                    Blob::n("hi hello")
+                ]
+            );
+        }
+
+        #[test]
+        fn dangling_at_end_with_pair() {
+            let tokenizer = DefaultTokenizer::new(vec!['|', '\'']);
+            assert_eq!(
+                tokenizer.split_into_quote_blobs("there! btw |foo |hi hello'"),
+                vec![
+                    Blob::n("there! btw "),
+                    Blob::q("|foo |"),
+                    Blob::n("hi hello'")
+                ]
+            );
+        }
+
+        #[test]
+        fn multiple_non_overlapping_pairs() {
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'']);
+            assert_eq!(
+                tokenizer.split_into_quote_blobs("abc'defg'hijk'lmno'pqr'stuvwx'yz"),
                 vec![
                     Blob::n("abc"),
                     Blob::q("'defg'"),
@@ -357,9 +433,9 @@ mod preprocess_tests {
 
         #[test]
         fn many_kinds_of_quotes() {
-            let preproc = DefaultTokenizer::new(vec!['"', '\'', '|']);
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'', '|']);
             assert_eq!(
-                preproc.split_into_quote_blobs("abc'defg'hijk'lmno'pqr'stuvwx'yz|vvvv|v"),
+                tokenizer.split_into_quote_blobs("abc'defg'hijk'lmno'pqr'stuvwx'yz|vvvv|v"),
                 vec![
                     Blob::n("abc"),
                     Blob::q("'defg'"),
@@ -376,9 +452,9 @@ mod preprocess_tests {
 
         #[test]
         fn only_one_quote() {
-            let preproc = DefaultTokenizer::new(vec!['|']);
+            let tokenizer = DefaultTokenizer::new(vec!['|']);
             assert_eq!(
-                preproc.split_into_quote_blobs("abc'defg'hijk'lmno'pqr'stuvwx'yz|vvvv|v"),
+                tokenizer.split_into_quote_blobs("abc'defg'hijk'lmno'pqr'stuvwx'yz|vvvv|v"),
                 vec![
                     Blob::n("abc'defg'hijk'lmno'pqr'stuvwx'yz"),
                     Blob::q("|vvvv|"),
@@ -389,9 +465,9 @@ mod preprocess_tests {
 
         #[test]
         fn multiple_kinds_of_quotes() {
-            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.split_into_quote_blobs("abc'defg'hijklmnopqr\"stuvwx\"yz"),
+                tokenizer.split_into_quote_blobs("abc'defg'hijklmnopqr\"stuvwx\"yz"),
                 vec![
                     Blob::n("abc"),
                     Blob::q("'defg'"),
@@ -404,24 +480,24 @@ mod preprocess_tests {
 
         #[test]
         fn empty_string() {
-            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
-            assert_eq!(preproc.split_into_quote_blobs(""), vec![Blob::n("")]);
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'']);
+            assert_eq!(tokenizer.split_into_quote_blobs(""), vec![Blob::n("")]);
         }
 
         #[test]
         fn only_quotes() {
-            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.split_into_quote_blobs("''''''''"),
+                tokenizer.split_into_quote_blobs("''''''''"),
                 vec![Blob::q("''"), Blob::q("''"), Blob::q("''"), Blob::q("''")]
             );
         }
 
         #[test]
         fn mixture_of_only_quotes() {
-            let preproc = DefaultTokenizer::new(vec!['|', '\'']);
+            let tokenizer = DefaultTokenizer::new(vec!['|', '\'']);
             assert_eq!(
-                preproc.split_into_quote_blobs("''||'|''|'||''|'|"),
+                tokenizer.split_into_quote_blobs("''||'|''|'||''|'|"),
                 vec![
                     Blob::q("''"),
                     Blob::q("||"),
@@ -440,60 +516,74 @@ mod preprocess_tests {
 
         #[test]
         fn empty_string() {
-            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'']);
             let empty_vec: Vec<&str> = Vec::new();
-            assert_eq!(preproc.split_by_space(vec![]), empty_vec);
+            assert_eq!(tokenizer.split_by_space(vec![]), empty_vec);
         }
 
         #[test]
         fn empty_blob() {
             // I don't think this is actually ever possible if we take blobs from
             // split_into_quote_blobs(), but whatever.
-            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
-            assert_eq!(preproc.split_by_space(vec![Blob::n("")]), vec![""]);
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'']);
+            // We expect us to not include the empty string, since the tokenizer considers it
+            // useless.
+            let empty_vec: Vec<&str> = Vec::new();
+            assert_eq!(tokenizer.split_by_space(vec![Blob::n("")]), empty_vec);
+        }
+
+        #[test]
+        fn multiple_empty_blobs() {
+            // Ditto comments in the empty_blob() test.
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'']);
+            let empty_vec: Vec<&str> = Vec::new();
+            assert_eq!(
+                tokenizer.split_by_space(vec![Blob::n(""), Blob::n(""), Blob::n("")]),
+                empty_vec
+            );
         }
 
         #[test]
         fn only_normals() {
-            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.split_by_space(vec![Blob::n("hi there"), Blob::n("euler is cool")]),
+                tokenizer.split_by_space(vec![Blob::n("hi there"), Blob::n("euler is cool")]),
                 vec!["hi", "there", "euler", "is", "cool"]
             );
         }
 
         #[test]
         fn only_quoteds() {
-            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.split_by_space(vec![Blob::q("'hi there'"), Blob::q("'euler is cool'")]),
+                tokenizer.split_by_space(vec![Blob::q("'hi there'"), Blob::q("'euler is cool'")]),
                 vec!["'hi there'", "'euler is cool'"]
             );
         }
 
         #[test]
         fn quoted_then_normal() {
-            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.split_by_space(vec![Blob::q("'hi there!'"), Blob::n("euler is cool")]),
+                tokenizer.split_by_space(vec![Blob::q("'hi there!'"), Blob::n("euler is cool")]),
                 vec!["'hi there!'", "euler", "is", "cool"]
             );
         }
 
         #[test]
         fn normal_then_quoted() {
-            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.split_by_space(vec![Blob::n("euler is cool"), Blob::q("'hi there!'")]),
+                tokenizer.split_by_space(vec![Blob::n("euler is cool"), Blob::q("'hi there!'")]),
                 vec!["euler", "is", "cool", "'hi there!'"]
             );
         }
 
         #[test]
         fn quoted_surrounded_by_normals() {
-            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.split_by_space(vec![
+                tokenizer.split_by_space(vec![
                     Blob::n("euler is cool"),
                     Blob::q("'hi there!'"),
                     Blob::n("euler is cool")
@@ -504,14 +594,55 @@ mod preprocess_tests {
 
         #[test]
         fn normal_surrounded_by_quoteds() {
-            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'']);
             assert_eq!(
-                preproc.split_by_space(vec![
+                tokenizer.split_by_space(vec![
                     Blob::q("'hi there!'"),
                     Blob::n("euler is cool"),
                     Blob::q("'hi there!'")
                 ]),
                 vec!["'hi there!'", "euler", "is", "cool", "'hi there!'"]
+            );
+        }
+
+        #[test]
+        fn trailing_spaces() {
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'']);
+            assert_eq!(
+                tokenizer.split_by_space(vec![
+                    Blob::q("'hi there!'"),
+                    Blob::n("euler is cool "),
+                    Blob::q("'hi there!'")
+                ]),
+                vec!["'hi there!'", "euler", "is", "cool", "'hi there!'"]
+            );
+        }
+
+        #[test]
+        fn with_newline() {
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'']);
+            assert_eq!(
+                tokenizer.split_by_space(vec![
+                    Blob::q("'hi there!'"),
+                    // We expect the newline to not be used as a splitting term.
+                    Blob::n("euler is\ncool "),
+                    Blob::q("'hi there!'")
+                ]),
+                vec!["'hi there!'", "euler", "is\ncool", "'hi there!'"]
+            );
+        }
+
+        #[test]
+        fn with_tab() {
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'']);
+            assert_eq!(
+                tokenizer.split_by_space(vec![
+                    Blob::q("'hi there!'"),
+                    // We expect the tab to not be used as a splitting term.
+                    Blob::n("euler is\tcool "),
+                    Blob::q("'hi there!'")
+                ]),
+                vec!["'hi there!'", "euler", "is\tcool", "'hi there!'"]
             );
         }
     }
