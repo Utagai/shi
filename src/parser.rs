@@ -28,7 +28,7 @@ impl Parser {
 }
 
 trait Tokenizer {
-    fn preprocess(&self, line: &str) -> Vec<&str>;
+    fn preprocess<'a>(&self, line: &'a str) -> Vec<&'a str>;
 }
 
 pub struct DefaultTokenizer {
@@ -177,13 +177,29 @@ impl DefaultTokenizer {
 
     /// Splits the given blobs by spaces, so long as the blob is not a quoted blob, and returns the
     /// flattened vector of splits.
-    fn split_by_space(&self, line_blobs: Vec<Blob>) -> Vec<&str> {
-        Vec::new()
+    fn split_by_space<'a>(&self, line_blobs: Vec<Blob<'a>>) -> Vec<&'a str> {
+        let mut splitted_parts: Vec<&str> = Vec::new();
+        for blob in line_blobs {
+            match blob {
+                Blob::Normal(s) => {
+                    // Since this is not protected by surrounding quotes, we _do_ want to split
+                    // this. We simply do it by space, and iterate the split result, adding them
+                    // onto splitted parts. extend() helps us do this elegantly.
+                    splitted_parts.extend(s.split(' '));
+                }
+                Blob::Quoted(s) => {
+                    // We don't want to split inside the quote, so just add this immediately.
+                    splitted_parts.push(s);
+                }
+            }
+        }
+
+        splitted_parts
     }
 }
 
 impl Tokenizer for DefaultTokenizer {
-    fn preprocess(&self, line: &str) -> Vec<&str> {
+    fn preprocess<'a>(&self, line: &'a str) -> Vec<&'a str> {
         let line_bits_with_quotes_globbed = self.split_into_quote_blobs(line);
 
         self.split_by_space(line_bits_with_quotes_globbed)
@@ -419,13 +435,84 @@ mod preprocess_tests {
         }
     }
 
-    // #[test]
-    // fn test_split_by_space() {
-    //     let preproc = DefaultTokenizer::new(vec!['"', '\'']);
-    //     let empty_vec: Vec<&str> = Vec::new();
-    //     assert_eq!(
-    //         preproc.split_by_space(vec!["foo", "'hi there'", " btw hello"]),
-    //         vec!["foo", "'hi there'", "btw", "hello"]
-    //     );
-    // }
+    mod split_by_space {
+        use super::*;
+
+        #[test]
+        fn empty_string() {
+            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+            let empty_vec: Vec<&str> = Vec::new();
+            assert_eq!(preproc.split_by_space(vec![]), empty_vec);
+        }
+
+        #[test]
+        fn empty_blob() {
+            // I don't think this is actually ever possible if we take blobs from
+            // split_into_quote_blobs(), but whatever.
+            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+            assert_eq!(preproc.split_by_space(vec![Blob::n("")]), vec![""]);
+        }
+
+        #[test]
+        fn only_normals() {
+            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+            assert_eq!(
+                preproc.split_by_space(vec![Blob::n("hi there"), Blob::n("euler is cool")]),
+                vec!["hi", "there", "euler", "is", "cool"]
+            );
+        }
+
+        #[test]
+        fn only_quoteds() {
+            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+            assert_eq!(
+                preproc.split_by_space(vec![Blob::q("'hi there'"), Blob::q("'euler is cool'")]),
+                vec!["'hi there'", "'euler is cool'"]
+            );
+        }
+
+        #[test]
+        fn quoted_then_normal() {
+            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+            assert_eq!(
+                preproc.split_by_space(vec![Blob::q("'hi there!'"), Blob::n("euler is cool")]),
+                vec!["'hi there!'", "euler", "is", "cool"]
+            );
+        }
+
+        #[test]
+        fn normal_then_quoted() {
+            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+            assert_eq!(
+                preproc.split_by_space(vec![Blob::n("euler is cool"), Blob::q("'hi there!'")]),
+                vec!["euler", "is", "cool", "'hi there!'"]
+            );
+        }
+
+        #[test]
+        fn quoted_surrounded_by_normals() {
+            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+            assert_eq!(
+                preproc.split_by_space(vec![
+                    Blob::n("euler is cool"),
+                    Blob::q("'hi there!'"),
+                    Blob::n("euler is cool")
+                ]),
+                vec!["euler", "is", "cool", "'hi there!'", "euler", "is", "cool"]
+            );
+        }
+
+        #[test]
+        fn normal_surrounded_by_quoteds() {
+            let preproc = DefaultTokenizer::new(vec!['"', '\'']);
+            assert_eq!(
+                preproc.split_by_space(vec![
+                    Blob::q("'hi there!'"),
+                    Blob::n("euler is cool"),
+                    Blob::q("'hi there!'")
+                ]),
+                vec!["'hi there!'", "euler", "is", "cool", "'hi there!'"]
+            );
+        }
+    }
 }
