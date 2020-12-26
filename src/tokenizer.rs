@@ -621,5 +621,19 @@ mod test {
                 vec!["'hi there!'", "euler", "is\tcool", "'hi there!'"]
             );
         }
+
+        #[test]
+        fn multiple_spaces() {
+            let tokenizer = DefaultTokenizer::new(vec!['"', '\'']);
+            assert_eq!(
+                tokenizer.split_by_space(vec![
+                    Blob::q("'hi there!'"),
+                    // We expect the tab to not be used as a splitting term.
+                    Blob::n("euler    is   cool "),
+                    Blob::q("'hi   there!'")
+                ]),
+                vec!["'hi there!'", "euler", "is", "cool", "'hi   there!'"]
+            );
+        }
     }
 }
