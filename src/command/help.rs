@@ -45,7 +45,7 @@ impl<'a, S> Command for HelpCommand<'a, S> {
         }
 
         help_lines.push(String::from("Built-in commands:"));
-        for builtin in shell.builtins.values() {
+        for builtin in shell.builtins.iter() {
             help_lines.push(format!("\t'{}' - {}", builtin.name(), builtin.help()))
         }
 

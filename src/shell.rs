@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::rc::Rc;
 
 // TODO: We should probably be using thiserror if this is going to be factored out into a library.
@@ -17,8 +16,7 @@ use crate::readline::Readline;
 pub struct Shell<'a, S> {
     prompt: &'a str,
     pub(crate) cmds: CommandSet<'a, S>,
-    // pub(crate) cmds: HashMap<String, Box<dyn Command<State = S> + 'a>>,
-    pub(crate) builtins: Rc<HashMap<String, Box<dyn Command<State = Self> + 'a>>>,
+    pub(crate) builtins: Rc<CommandSet<'a, Self>>,
     pub(crate) rl: Readline,
     history_file: Option<&'a str>,
     state: S,
@@ -26,24 +24,15 @@ pub struct Shell<'a, S> {
 }
 
 impl<'a, S> Shell<'a, S> {
-    fn build_builtins() -> HashMap<String, Box<dyn Command<State = Shell<'a, S>> + 'a>>
+    fn build_builtins() -> CommandSet<'a, Shell<'a, S>>
     where
         S: 'a,
     {
-        // Wow so many RANGLEs.
-        // Anyways, we could just make the HashMap directly, but I find this easier to add elements
-        // to.
-        let builtins_vec: Vec<Box<dyn Command<State = Shell<S>>>> = vec![
-            Box::new(HelpCommand::new()),
-            Box::new(HelpTreeCommand::new()),
-            Box::new(ExitCommand::new()),
-            Box::new(HistoryCommand::new()),
-        ];
-        let mut builtins: HashMap<String, Box<dyn Command<State = Shell<S>>>> =
-            HashMap::with_capacity(builtins_vec.len());
-        for builtin in builtins_vec {
-            builtins.insert(builtin.name().to_owned(), builtin);
-        }
+        let mut builtins: CommandSet<'a, Shell<'a, S>> = CommandSet::new();
+        builtins.add(HelpCommand::new());
+        builtins.add(HelpTreeCommand::new());
+        builtins.add(ExitCommand::new());
+        builtins.add(HistoryCommand::new());
 
         return builtins;
     }
@@ -122,7 +111,7 @@ impl<'a, S> Shell<'a, S> {
             None => {
                 // Fallback to builtins. Then error if we got nothing.
                 let builtins_rc = self.builtins.clone();
-                match builtins_rc.get::<str>(&potential_cmd) {
+                match builtins_rc.get(potential_cmd) {
                     Some(builtin) => {
                         builtin.validate_args(&args)?;
                         return builtin.execute(self, &args);

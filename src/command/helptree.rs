@@ -136,7 +136,7 @@ impl<'a, S> HelpTreeCommand<'a, S> {
     fn to_lines(&self, shell: &Shell<'a, S>) -> Vec<String> {
         let normal_cmds_vec: Vec<&Box<dyn Command<State = S>>> = shell.cmds.iter().collect();
         let builtin_cmds_vec: Vec<&Box<dyn Command<State = Shell<S>>>> =
-            shell.builtins.values().collect();
+            shell.builtins.iter().collect();
         let help_lines: Vec<String> = self.get_tree_lines(&normal_cmds_vec, &builtin_cmds_vec);
 
         help_lines
