@@ -140,7 +140,7 @@ impl ExecCompleter {
         ExecCompleter {}
     }
 
-    fn complete(&self, line: &str, pos: usize) -> rustyline::Result<(usize, Vec<Pair>)> {
+    fn complete(&self, _: &str, _: usize) -> rustyline::Result<(usize, Vec<Pair>)> {
         Ok((0, Vec::new()))
     }
 }

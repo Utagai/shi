@@ -21,7 +21,7 @@ impl Parser {
         }
     }
 
-    pub fn parse(&self, line: &str) -> Outcome {
+    pub fn parse(&self, _: &str) -> Outcome {
         Outcome {
             cmd_path: Vec::new(),
             cmd_type: CommandType::Custom,
