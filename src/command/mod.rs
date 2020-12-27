@@ -36,15 +36,8 @@ impl<'a, S> Command<'a, S> {
         Self::Child(Box::new(child_cmd))
     }
 
-    pub fn new_parent(name: &'a str, sub_cmds: Vec<Box<Command<'a, S>>>) -> Self {
+    pub fn new_parent(name: &'a str, sub_cmds: Vec<Command<'a, S>>) -> Self {
         Self::Parent(ParentCommand::new(name, sub_cmds))
-    }
-
-    fn sub_commands(&self) -> Vec<&Command<S>> {
-        match self {
-            Self::Child(_) => Vec::new(),
-            Self::Parent(parent_cmd) => parent_cmd.sub_commands(),
-        }
     }
 }
 

@@ -7,16 +7,19 @@ use crate::command_set::CommandSet;
 
 pub struct ParentCommand<'a, S> {
     name: &'a str,
-    sub_cmds: HashMap<String, Box<Command<'a, S>>>,
+    sub_cmds: CommandSet<'a, S>,
 }
 
 impl<'a, S> ParentCommand<'a, S> {
-    pub fn new(name: &'a str, sub_cmds: Vec<Box<Command<'a, S>>>) -> ParentCommand<'a, S> {
-        let mut hm = HashMap::new();
+    pub fn new(name: &'a str, sub_cmds: Vec<Command<'a, S>>) -> ParentCommand<'a, S> {
+        let mut command_set = CommandSet::new();
         for sub_cmd in sub_cmds {
-            hm.insert(sub_cmd.name().to_string(), sub_cmd);
+            command_set.add(sub_cmd);
         }
-        ParentCommand { name, sub_cmds: hm }
+        ParentCommand {
+            name,
+            sub_cmds: command_set,
+        }
     }
 
     fn get_sub_cmd_for_args(&self, args: &Vec<String>) -> Result<&Box<Command<S>>> {
@@ -44,8 +47,8 @@ impl<'a, S> ParentCommand<'a, S> {
         }
     }
 
-    pub fn sub_commands(&self) -> Vec<&Command<S>> {
-        self.sub_cmds.values().map(|v| v.as_ref()).collect()
+    pub fn sub_commands(&self) -> &CommandSet<S> {
+        &self.sub_cmds
     }
 }
 

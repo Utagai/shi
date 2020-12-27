@@ -68,32 +68,32 @@ mod test {
         shell.register(Command::new_parent(
             "add",
             vec![
-                Box::new(Command::new_child(BasicCommand::new(
+                Command::new_child(BasicCommand::new(
                     "title",
                     |the_lst: &mut Vec<String>, _| {
                         the_lst.push("title".to_owned());
                         Ok(String::from("Added 'title'"))
                     },
-                ))),
-                Box::new(Command::new_parent(
+                )),
+                Command::new_parent(
                     "isbn",
                     vec![
-                        Box::new(Command::new_child(BasicCommand::new(
+                        Command::new_child(BasicCommand::new(
                             "eu",
                             |the_lst: &mut Vec<String>, _| {
                                 the_lst.push("eu".to_owned());
                                 Ok(String::from("Added 'eu'"))
                             },
-                        ))),
-                        Box::new(Command::new_child(BasicCommand::new(
+                        )),
+                        Command::new_child(BasicCommand::new(
                             "us",
                             |the_lst: &mut Vec<String>, _| {
                                 the_lst.push("us".to_owned());
                                 Ok(String::from("Added 'us'"))
                             },
-                        ))),
+                        )),
                     ],
-                )),
+                ),
             ],
         ))?;
         shell.register(Command::new_child(CustomCommand::new()))?;
