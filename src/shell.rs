@@ -10,11 +10,14 @@ use crate::command::{
     Command,
 };
 
+use crate::command_set::CommandSet;
+
 use crate::readline::Readline;
 
 pub struct Shell<'a, S> {
     prompt: &'a str,
-    pub(crate) cmds: HashMap<String, Box<dyn Command<State = S> + 'a>>,
+    pub(crate) cmds: CommandSet<'a, S>,
+    // pub(crate) cmds: HashMap<String, Box<dyn Command<State = S> + 'a>>,
     pub(crate) builtins: Rc<HashMap<String, Box<dyn Command<State = Self> + 'a>>>,
     pub(crate) rl: Readline,
     history_file: Option<&'a str>,
@@ -51,7 +54,7 @@ impl<'a, S> Shell<'a, S> {
         Shell {
             prompt,
             rl: Readline::new(),
-            cmds: HashMap::new(),
+            cmds: CommandSet::new(),
             builtins: Rc::new(Shell::build_builtins()),
             history_file: None,
             state: (),
@@ -66,7 +69,7 @@ impl<'a, S> Shell<'a, S> {
         Shell {
             prompt,
             rl: Readline::new(),
-            cmds: HashMap::new(),
+            cmds: CommandSet::new(),
             builtins: Rc::new(Shell::build_builtins()),
             history_file: None,
             state,
@@ -78,11 +81,11 @@ impl<'a, S> Shell<'a, S> {
     where
         T: 'a + Command<State = S>,
     {
-        if self.cmds.contains_key(cmd.name()) {
+        if self.cmds.contains(cmd.name()) {
             bail!("command '{}' already registered", cmd.name())
         }
 
-        self.cmds.insert(cmd.name().to_owned(), Box::new(cmd));
+        self.cmds.add(cmd);
 
         Ok(())
     }
@@ -111,7 +114,7 @@ impl<'a, S> Shell<'a, S> {
             }
         };
         let args: Vec<String> = splits.map(|s| s.to_owned()).collect();
-        match self.cmds.get::<str>(&potential_cmd) {
+        match self.cmds.get(potential_cmd) {
             Some(cmd) => {
                 cmd.validate_args(&args)?;
                 return cmd.execute(&mut self.state, &args);

@@ -1,8 +1,9 @@
 pub mod command;
+mod command_set;
 mod parser;
-mod tokenizer;
 mod readline;
 pub mod shell;
+mod tokenizer;
 
 #[cfg(test)]
 mod test {

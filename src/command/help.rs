@@ -40,7 +40,7 @@ impl<'a, S> Command for HelpCommand<'a, S> {
         let mut help_lines: Vec<String> =
             Vec::with_capacity(shell.cmds.len() + shell.builtins.len());
         help_lines.push(String::from("Normal commands:"));
-        for cmd in shell.cmds.values() {
+        for cmd in &shell.cmds {
             help_lines.push(format!("\t'{}' - {}", cmd.name(), cmd.help()));
         }
 

@@ -1,7 +1,7 @@
 use std::borrow::Cow::{self, Borrowed, Owned};
 use std::path::Path;
 
-use anyhow::{bail, Result};
+use anyhow::Result;
 
 use rustyline::completion::{Completer, Pair};
 use rustyline::highlight::{Highlighter, MatchingBracketHighlighter};
