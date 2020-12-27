@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use anyhow::{bail, Result};
 
-use super::Command;
+use super::{BaseCommand, Command};
 use crate::shell::Shell;
 
 #[derive(Debug)]
@@ -81,7 +81,7 @@ impl<'a, S> HelpTreeCommand<'a, S> {
         &self,
         ctx: &IndentContext,
         lines: &mut Vec<String>,
-        cmds: Vec<&dyn Command<State = T>>,
+        cmds: Vec<&Command<T>>,
     ) {
         for (i, cmd) in cmds.iter().enumerate() {
             let last = i == cmds.len() - 1;
@@ -95,8 +95,8 @@ impl<'a, S> HelpTreeCommand<'a, S> {
 
     fn get_tree_lines(
         &self,
-        normal_cmds: &'a Vec<&Box<dyn Command<State = S> + 'a>>,
-        builtin_cmds: &'a Vec<&Box<dyn Command<State = Shell<S>> + 'a>>,
+        normal_cmds: &'a Vec<&Box<Command<S>>>,
+        builtin_cmds: &'a Vec<&Box<Command<Shell<S>>>>,
     ) -> Vec<String> {
         // First, tackle the initial two subtrees, since they have slightly differing types.
         //  1: The normal commands.
@@ -134,16 +134,15 @@ impl<'a, S> HelpTreeCommand<'a, S> {
     }
 
     fn to_lines(&self, shell: &Shell<'a, S>) -> Vec<String> {
-        let normal_cmds_vec: Vec<&Box<dyn Command<State = S>>> = shell.cmds.iter().collect();
-        let builtin_cmds_vec: Vec<&Box<dyn Command<State = Shell<S>>>> =
-            shell.builtins.iter().collect();
+        let normal_cmds_vec: Vec<&Box<Command<S>>> = shell.cmds.iter().collect();
+        let builtin_cmds_vec: Vec<&Box<Command<Shell<S>>>> = shell.builtins.iter().collect();
         let help_lines: Vec<String> = self.get_tree_lines(&normal_cmds_vec, &builtin_cmds_vec);
 
         help_lines
     }
 }
 
-impl<'a, S> Command for HelpTreeCommand<'a, S> {
+impl<'a, S> BaseCommand for HelpTreeCommand<'a, S> {
     type State = Shell<'a, S>;
 
     fn name(&self) -> &str {

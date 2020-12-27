@@ -2,23 +2,24 @@ use std::collections::HashMap;
 
 use anyhow::{bail, Result};
 
-use super::Command;
+use super::{BaseCommand, Command};
+use crate::command_set::CommandSet;
 
 pub struct ParentCommand<'a, S> {
     name: &'a str,
-    sub_cmds: HashMap<String, Box<dyn Command<State = S>>>,
+    sub_cmds: HashMap<String, Box<Command<'a, S>>>,
 }
 
 impl<'a, S> ParentCommand<'a, S> {
-    pub fn new(name: &'a str, sub_cmds: Vec<Box<dyn Command<State = S>>>) -> ParentCommand<'a, S> {
+    pub fn new(name: &'a str, sub_cmds: Vec<Box<Command<'a, S>>>) -> ParentCommand<'a, S> {
         let mut hm = HashMap::new();
         for sub_cmd in sub_cmds {
-            hm.insert(sub_cmd.name().to_owned(), sub_cmd);
+            hm.insert(sub_cmd.name().to_string(), sub_cmd);
         }
         ParentCommand { name, sub_cmds: hm }
     }
 
-    fn get_sub_cmd_for_args(&self, args: &Vec<String>) -> Result<&Box<dyn Command<State = S>>> {
+    fn get_sub_cmd_for_args(&self, args: &Vec<String>) -> Result<&Box<Command<S>>> {
         let first_arg = match args.get(0) {
             Some(arg) => arg,
             None => bail!(
@@ -42,17 +43,17 @@ impl<'a, S> ParentCommand<'a, S> {
             ),
         }
     }
+
+    pub fn sub_commands(&self) -> Vec<&Command<S>> {
+        self.sub_cmds.values().map(|v| v.as_ref()).collect()
+    }
 }
 
-impl<'a, S> Command for ParentCommand<'a, S> {
+impl<'a, S> BaseCommand for ParentCommand<'a, S> {
     type State = S;
 
     fn name(&self) -> &str {
         self.name
-    }
-
-    fn sub_commands(&self) -> Vec<&dyn Command<State = S>> {
-        self.sub_cmds.values().map(|v| v.as_ref()).collect()
     }
 
     fn validate_args(&self, args: &Vec<String>) -> Result<()> {

@@ -1,11 +1,11 @@
 use std::collections::{hash_map::Iter, HashMap};
 
-use crate::command::Command;
+use crate::command::{BaseCommand, Command};
 
 /// A wrapper data structure that offers retrieval, insertion, contains and len methods, specifically
 /// for Commands.
 pub struct CommandSet<'a, S> {
-    cmds: HashMap<String, Box<dyn Command<State = S> + 'a>>,
+    cmds: HashMap<String, Box<Command<'a, S>>>,
 }
 
 impl<'a, S> CommandSet<'a, S> {
@@ -17,14 +17,11 @@ impl<'a, S> CommandSet<'a, S> {
 }
 
 impl<'a, S> CommandSet<'a, S> {
-    pub fn get(&self, name: &str) -> Option<&Box<dyn Command<State = S> + 'a>> {
+    pub fn get(&self, name: &str) -> Option<&Box<Command<'a, S>>> {
         self.cmds.get(name)
     }
 
-    pub fn add<C>(&mut self, cmd: C)
-    where
-        C: Command<State = S> + 'a,
-    {
+    pub fn add(&mut self, cmd: Command<'a, S>) {
         self.cmds.insert(cmd.name().to_owned(), Box::new(cmd));
     }
 
@@ -44,11 +41,11 @@ impl<'a, S> CommandSet<'a, S> {
 }
 
 pub struct CommandSetIterator<'a, S> {
-    iter: Iter<'a, String, Box<dyn Command<State = S> + 'a>>,
+    iter: Iter<'a, String, Box<Command<'a, S>>>,
 }
 
 impl<'a, S> Iterator for CommandSetIterator<'a, S> {
-    type Item = &'a Box<dyn Command<State = S> + 'a>;
+    type Item = &'a Box<Command<'a, S>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next().map(|(_, v)| v)
@@ -56,7 +53,7 @@ impl<'a, S> Iterator for CommandSetIterator<'a, S> {
 }
 
 impl<'a, S: 'a> IntoIterator for &'a CommandSet<'a, S> {
-    type Item = &'a Box<dyn Command<State = S> + 'a>;
+    type Item = &'a Box<Command<'a, S>>;
     type IntoIter = CommandSetIterator<'a, S>;
 
     fn into_iter(self) -> Self::IntoIter {

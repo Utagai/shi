@@ -6,7 +6,7 @@ use rustyline::error::ReadlineError;
 
 use crate::command::{
     builtin::{ExitCommand, HelpCommand, HelpTreeCommand, HistoryCommand},
-    Command,
+    BaseCommand, Command,
 };
 
 use crate::command_set::CommandSet;
@@ -29,10 +29,10 @@ impl<'a, S> Shell<'a, S> {
         S: 'a,
     {
         let mut builtins: CommandSet<'a, Shell<'a, S>> = CommandSet::new();
-        builtins.add(HelpCommand::new());
-        builtins.add(HelpTreeCommand::new());
-        builtins.add(ExitCommand::new());
-        builtins.add(HistoryCommand::new());
+        builtins.add(Command::new_child(HelpCommand::new()));
+        builtins.add(Command::new_child(HelpTreeCommand::new()));
+        builtins.add(Command::new_child(ExitCommand::new()));
+        builtins.add(Command::new_child(HistoryCommand::new()));
 
         return builtins;
     }
@@ -66,10 +66,7 @@ impl<'a, S> Shell<'a, S> {
         }
     }
 
-    pub fn register<T>(&mut self, cmd: T) -> Result<()>
-    where
-        T: 'a + Command<State = S>,
-    {
+    pub fn register(&mut self, cmd: Command<'a, S>) -> Result<()> {
         if self.cmds.contains(cmd.name()) {
             bail!("command '{}' already registered", cmd.name())
         }

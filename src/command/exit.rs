@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use anyhow::{bail, Result};
 
-use super::Command;
+use super::BaseCommand;
 use crate::shell::Shell;
 
 #[derive(Debug)]
@@ -18,7 +18,7 @@ impl<'a, S> ExitCommand<'a, S> {
     }
 }
 
-impl<'a, S> Command for ExitCommand<'a, S> {
+impl<'a, S> BaseCommand for ExitCommand<'a, S> {
     type State = Shell<'a, S>;
 
     fn name(&self) -> &str {

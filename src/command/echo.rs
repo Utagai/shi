@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 
 use anyhow::{bail, Result};
 
-use super::Command;
+use super::BaseCommand;
 
 #[derive(Debug)]
 pub struct EchoCommand<S> {
@@ -18,7 +18,7 @@ impl<S> EchoCommand<S> {
     }
 }
 
-impl<S> Command for EchoCommand<S> {
+impl<S> BaseCommand for EchoCommand<S> {
     type State = S;
 
     fn name(&self) -> &str {

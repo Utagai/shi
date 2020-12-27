@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use anyhow::Result;
 
-use super::Command;
+use super::BaseCommand;
 
 pub struct BasicCommand<'a, S> {
     name: &'a str,
@@ -22,7 +22,7 @@ impl<'a, S> BasicCommand<'a, S> {
     }
 }
 
-impl<'a, S> Command for BasicCommand<'a, S> {
+impl<'a, S> BaseCommand for BasicCommand<'a, S> {
     type State = S;
 
     fn name(&self) -> &str {

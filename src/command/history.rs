@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use anyhow::{bail, Result};
 
-use super::Command;
+use super::BaseCommand;
 use crate::shell::Shell;
 
 #[derive(Debug)]
@@ -18,7 +18,7 @@ impl<'a, S> HistoryCommand<'a, S> {
     }
 }
 
-impl<'a, S> Command for HistoryCommand<'a, S> {
+impl<'a, S> BaseCommand for HistoryCommand<'a, S> {
     type State = Shell<'a, S>;
 
     fn name(&self) -> &str {

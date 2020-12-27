@@ -23,16 +23,69 @@ pub use parent::ParentCommand;
 pub mod basic;
 pub use basic::BasicCommand;
 
-pub trait Command {
+pub enum Command<'a, S> {
+    Child(Box<dyn BaseCommand<State = S> + 'a>),
+    Parent(ParentCommand<'a, S>),
+}
+
+impl<'a, S> Command<'a, S> {
+    pub fn new_child<C>(child_cmd: C) -> Self
+    where
+        C: BaseCommand<State = S> + 'a,
+    {
+        Self::Child(Box::new(child_cmd))
+    }
+
+    pub fn new_parent(name: &'a str, sub_cmds: Vec<Box<Command<'a, S>>>) -> Self {
+        Self::Parent(ParentCommand::new(name, sub_cmds))
+    }
+
+    fn sub_commands(&self) -> Vec<&Command<S>> {
+        match self {
+            Self::Child(_) => Vec::new(),
+            Self::Parent(parent_cmd) => parent_cmd.sub_commands(),
+        }
+    }
+}
+
+impl<'a, S> BaseCommand for Command<'a, S> {
+    type State = S;
+
+    fn name(&self) -> &str {
+        match self {
+            Self::Child(cmd) => cmd.name(),
+            Self::Parent(parent_cmd) => parent_cmd.name(),
+        }
+    }
+
+    fn validate_args(&self, args: &Vec<String>) -> Result<()> {
+        match self {
+            Self::Child(cmd) => cmd.validate_args(args),
+            Self::Parent(parent_cmd) => parent_cmd.validate_args(args),
+        }
+    }
+
+    fn execute(&self, state: &mut Self::State, args: &Vec<String>) -> Result<String> {
+        match self {
+            Self::Child(cmd) => cmd.execute(state, args),
+            Self::Parent(parent_cmd) => parent_cmd.execute(state, args),
+        }
+    }
+
+    fn help(&self) -> String {
+        match self {
+            Self::Child(cmd) => cmd.help(),
+            Self::Parent(parent_cmd) => parent_cmd.help(),
+        }
+    }
+}
+
+pub trait BaseCommand {
     type State;
 
     fn name(&self) -> &str;
     // TODO: This may be better removed and implied to implementors to include in execute()'s body.
     fn validate_args(&self, args: &Vec<String>) -> Result<()>;
-    // TODO: This probably shouldn't have a default impl.
-    fn sub_commands(&self) -> Vec<&dyn Command<State = Self::State>> {
-        Vec::new()
-    }
     // TODO: Execute should probably be returning something better than a Result<String>.
     fn execute(&self, state: &mut Self::State, args: &Vec<String>) -> Result<String>;
     fn help(&self) -> String {

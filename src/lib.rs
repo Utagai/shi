@@ -21,7 +21,7 @@ mod test {
         }
     }
 
-    impl Command for CustomCommand {
+    impl BaseCommand for CustomCommand {
         type State = Vec<String>;
 
         fn name(&self) -> &str {
@@ -48,46 +48,55 @@ mod test {
         let mut shell = Shell::new_with_state("| ", lst);
 
         shell.set_history_file("readline_history.txt")?;
-        shell.register(EchoCommand::new())?;
-        shell.register(BasicCommand::new("remove", |_, _| {
+        shell.register(Command::new_child(EchoCommand::new()))?;
+        shell.register(Command::new_child(BasicCommand::new("remove", |_, _| {
             Ok(String::from("I AM REMOVE CLOSURE!!!"))
-        }))?;
-        shell.register(BasicCommand::new("list", |the_lst: &mut Vec<String>, _| {
-            Ok(format!(
-                "Current: [{}]",
-                the_lst
-                    .iter()
-                    .map(|f| format!("{:?}", f))
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ))
-        }))?;
-        shell.register(ParentCommand::new(
+        })))?;
+        shell.register(Command::new_child(BasicCommand::new(
+            "list",
+            |the_lst: &mut Vec<String>, _| {
+                Ok(format!(
+                    "Current: [{}]",
+                    the_lst
+                        .iter()
+                        .map(|f| format!("{:?}", f))
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                ))
+            },
+        )))?;
+        shell.register(Command::new_parent(
             "add",
             vec![
-                Box::new(BasicCommand::new(
+                Box::new(Command::new_child(BasicCommand::new(
                     "title",
                     |the_lst: &mut Vec<String>, _| {
                         the_lst.push("title".to_owned());
                         Ok(String::from("Added 'title'"))
                     },
-                )),
-                Box::new(ParentCommand::new(
+                ))),
+                Box::new(Command::new_parent(
                     "isbn",
                     vec![
-                        Box::new(BasicCommand::new("eu", |the_lst: &mut Vec<String>, _| {
-                            the_lst.push("eu".to_owned());
-                            Ok(String::from("Added 'eu'"))
-                        })),
-                        Box::new(BasicCommand::new("us", |the_lst: &mut Vec<String>, _| {
-                            the_lst.push("us".to_owned());
-                            Ok(String::from("Added 'us'"))
-                        })),
+                        Box::new(Command::new_child(BasicCommand::new(
+                            "eu",
+                            |the_lst: &mut Vec<String>, _| {
+                                the_lst.push("eu".to_owned());
+                                Ok(String::from("Added 'eu'"))
+                            },
+                        ))),
+                        Box::new(Command::new_child(BasicCommand::new(
+                            "us",
+                            |the_lst: &mut Vec<String>, _| {
+                                the_lst.push("us".to_owned());
+                                Ok(String::from("Added 'us'"))
+                            },
+                        ))),
                     ],
                 )),
             ],
         ))?;
-        shell.register(CustomCommand::new())?;
+        shell.register(Command::new_child(CustomCommand::new()))?;
 
         shell.run()?;
 
