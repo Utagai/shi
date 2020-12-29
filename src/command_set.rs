@@ -14,6 +14,15 @@ impl<'a, S> CommandSet<'a, S> {
             cmds: HashMap::new(),
         }
     }
+
+    pub fn new_from_vec(cmds: Vec<Command<'a, S>>) -> Self {
+        let mut cmd_set = CommandSet::new();
+        for cmd in cmds {
+            cmd_set.add(cmd);
+        }
+
+        cmd_set
+    }
 }
 
 impl<'a, S> CommandSet<'a, S> {

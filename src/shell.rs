@@ -8,9 +8,8 @@ use crate::command::{
     builtin::{ExitCommand, HelpCommand, HelpTreeCommand, HistoryCommand},
     BaseCommand, Command,
 };
-
 use crate::command_set::CommandSet;
-
+use crate::parser::Parser;
 use crate::readline::Readline;
 
 pub struct Shell<'a, S> {
@@ -18,6 +17,7 @@ pub struct Shell<'a, S> {
     pub(crate) cmds: CommandSet<'a, S>,
     pub(crate) builtins: Rc<CommandSet<'a, Self>>,
     pub(crate) rl: Readline,
+    pub(crate) parser: Parser,
     history_file: Option<&'a str>,
     state: S,
     pub(crate) terminate: bool,
@@ -43,6 +43,7 @@ impl<'a, S> Shell<'a, S> {
         Shell {
             prompt,
             rl: Readline::new(),
+            parser: Parser::new(),
             cmds: CommandSet::new(),
             builtins: Rc::new(Shell::build_builtins()),
             history_file: None,
@@ -58,6 +59,7 @@ impl<'a, S> Shell<'a, S> {
         Shell {
             prompt,
             rl: Readline::new(),
+            parser: Parser::new(),
             cmds: CommandSet::new(),
             builtins: Rc::new(Shell::build_builtins()),
             history_file: None,

@@ -24,7 +24,9 @@ pub mod basic;
 pub use basic::BasicCommand;
 
 pub enum Command<'a, S> {
+    // TODO: This should be called Leaf.
     Child(Box<dyn BaseCommand<State = S> + 'a>),
+    // TODO: Do we want to make Parent commands a trait?
     Parent(ParentCommand<'a, S>),
 }
 
