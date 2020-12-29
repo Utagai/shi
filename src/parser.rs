@@ -138,9 +138,13 @@ impl Parser {
         }
 
         Outcome {
-            cmd_path: Vec::new(),
-            remaining: tokens.to_vec(),
-            cmd_type: CommandType::Unknown,
+            cmd_path,
+            remaining: Vec::new(), // If we get here, we are out of tokens anyways.
+            cmd_type: if tokens.is_empty() {
+                CommandType::Unknown
+            } else {
+                cmd_type
+            },
             complete: false,
         }
     }
@@ -274,7 +278,7 @@ mod test {
     }
 
     #[test]
-    fn nesting_no_args() {
+    fn no_nesting_no_args() {
         let cmds = make_parser_cmds();
 
         assert_eq!(
@@ -284,6 +288,21 @@ mod test {
                 remaining: vec![],
                 cmd_type: CommandType::Custom,
                 complete: true,
+            }
+        );
+    }
+
+    #[test]
+    fn end_with_no_args_but_is_parent() {
+        let cmds = make_parser_cmds();
+
+        assert_eq!(
+            Parser::new().parse("foo-c qux-c", &cmds.0, &cmds.1),
+            Outcome {
+                cmd_path: vec!["foo-c", "qux-c"],
+                remaining: vec![],
+                cmd_type: CommandType::Custom,
+                complete: false,
             }
         );
     }
@@ -411,7 +430,7 @@ mod test {
     }
 
     #[test]
-    fn thee_levels_deep() {
+    fn three_levels_deep() {
         let cmds = make_parser_cmds();
 
         assert_eq!(
