@@ -323,17 +323,17 @@ mod test {
     }
 
     #[test]
-    fn test() {
+    fn thee_levels_deep() {
         let cmds = make_parser_cmds();
-        let p = Parser::new();
 
-        println!(
-            "Parse outcome: {:?}",
-            p.parse("foo-c qux quux", &cmds.0, &cmds.1)
-        );
-        println!(
-            "Parse outcome: {:?}",
-            p.parse("foo-c qux quux la la la", &cmds.0, &cmds.1)
+        assert_eq!(
+            Parser::new().parse("foo-c qux quux la la", &cmds.0, &cmds.1),
+            Outcome {
+                cmd_path: vec!["foo-c", "qux", "quux"],
+                remaining: vec!["la", "la"],
+                cmd_type: CommandType::Custom,
+                complete: true,
+            }
         );
     }
 }
