@@ -22,6 +22,61 @@ pub struct Outcome<'a> {
     complete: bool,
 }
 
+impl<'a> Outcome<'a> {
+    pub fn error_msg(&self) -> String {
+        if self.complete {
+            return String::from("");
+        }
+
+        let mut msg = String::new();
+
+        if self.cmd_path.is_empty() && self.remaining.is_empty() {
+            msg.push_str("Empty string could not be parsed as a command.\n");
+        } else if self.cmd_path.is_empty() {
+            if let Some(first_remaining_word) = self.remaining.get(0) {
+                msg.push_str(&format!(
+                    "'{}' is not a recognized command.\n",
+                    first_remaining_word
+                ));
+            } else {
+                unreachable!("remaining unparsed tokens cannot be empty at this point")
+            }
+        } else {
+            msg.push_str("Failed to parse fully:\n");
+            msg.push_str("\n");
+
+            let valid_prefix = self.cmd_path.join(" ");
+            let invalid_suffix = self.remaining.join(" ");
+            msg.push_str("\t    (spaces trimmed)\n");
+            if self.remaining.is_empty() {
+                msg.push_str(&format!("\t => '{}  '\n", valid_prefix));
+                msg.push_str(&format!("\t     {}^\n", " ".repeat(valid_prefix.len() + 1)));
+            } else {
+                msg.push_str(&format!("\t => '{} {}'\n", valid_prefix, invalid_suffix));
+                msg.push_str(&format!("\t     {}^\n", " ".repeat(valid_prefix.len() + 1)));
+            }
+            msg.push_str("expected a valid subcommand\n");
+            msg.push_str("instead, got: ");
+            if let Some(first_remaining_word) = self.remaining.get(0) {
+                msg.push_str(&format!("'{}'\n", first_remaining_word));
+            } else {
+                msg.push_str("nothing\n")
+            }
+
+            msg.push_str("\n");
+            msg.push_str(&format!(
+                "Run '{} help' for more info on the command.",
+                valid_prefix
+            ));
+        }
+
+        msg.push_str("\n");
+        msg.push_str("Run 'helptree' for more info on the entire command tree.\n");
+
+        msg
+    }
+}
+
 impl Parser {
     pub fn new() -> Parser {
         Parser {
@@ -120,12 +175,12 @@ impl Parser {
     }
 }
 
+#[cfg(test)]
 mod test {
     use super::*;
 
     use anyhow::Result;
 
-    #[cfg(test)]
     use pretty_assertions::assert_eq;
 
     use std::marker::PhantomData;
@@ -417,5 +472,105 @@ mod test {
                 complete: true,
             }
         );
+    }
+
+    mod outcome {
+        use super::{CommandType, Outcome};
+
+        use pretty_assertions::assert_eq;
+
+        #[test]
+        fn outcome_error_msg() {
+            let outcome = Outcome {
+                cmd_path: vec!["foo", "bar"],
+                remaining: vec!["la", "la"],
+                cmd_type: CommandType::Custom,
+                complete: false,
+            };
+
+            assert_eq!(
+                outcome.error_msg(),
+                vec![
+                    "Failed to parse fully:\n",
+                    "\n",
+                    "\t    (spaces trimmed)\n",
+                    "\t => 'foo bar la la'\n",
+                    "\t             ^\n",
+                    "expected a valid subcommand\n",
+                    "instead, got: 'la'\n",
+                    "\n",
+                    "Run 'foo bar help' for more info on the command.\n",
+                    "Run 'helptree' for more info on the entire command tree.\n",
+                ]
+                .join(""),
+            );
+        }
+
+        #[test]
+        fn empty_remaining_in_outcome() {
+            let outcome = Outcome {
+                cmd_path: vec!["foo", "bar"],
+                remaining: vec![],
+                cmd_type: CommandType::Custom,
+                complete: false,
+            };
+
+            assert_eq!(
+                outcome.error_msg(),
+                vec![
+                    "Failed to parse fully:\n",
+                    "\n",
+                    "\t    (spaces trimmed)\n",
+                    "\t => 'foo bar  '\n",
+                    "\t             ^\n",
+                    "expected a valid subcommand\n",
+                    "instead, got: nothing\n",
+                    "\n",
+                    "Run 'foo bar help' for more info on the command.\n",
+                    "Run 'helptree' for more info on the entire command tree.\n",
+                ]
+                .join(""),
+            );
+        }
+
+        #[test]
+        fn empty() {
+            let outcome = Outcome {
+                cmd_path: vec![],
+                remaining: vec![],
+                cmd_type: CommandType::Custom,
+                complete: false,
+            };
+
+            assert_eq!(
+                outcome.error_msg(),
+                vec![
+                    "Empty string could not be parsed as a command.\n",
+                    "\n",
+                    "Run 'helptree' for more info on the entire command tree.\n",
+                ]
+                .join(""),
+            );
+        }
+
+        #[test]
+        fn unrecognized_first_cmd() {
+            let outcome = Outcome {
+                cmd_path: vec![],
+                remaining: vec!["notfound", "la"],
+                cmd_type: CommandType::Custom,
+                complete: false,
+            };
+
+            assert_eq!(
+                outcome.error_msg(),
+                vec![
+                    "'notfound' is not a recognized command.\n",
+                    "\n",
+                    "Run 'helptree' for more info on the entire command tree.\n",
+                ]
+                .join(""),
+            );
+        }
     }
 }
