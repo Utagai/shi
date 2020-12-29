@@ -37,10 +37,7 @@ impl Parser {
     ) -> Outcome<'a> {
         let mut cmd_path: Vec<&str> = Vec::new();
         let mut current_set = set;
-        for i in 0..tokens.len() {
-            // This will never panic, because our bounds are correct above ([0, tokens.len())).
-            let token = tokens.get(i).unwrap();
-
+        for (i, token) in tokens.iter().enumerate() {
             // Try looking up the token in our set.
             let looked_up_cmd = match current_set.get(token) {
                 Some(cmd) => {
