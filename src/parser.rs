@@ -106,13 +106,7 @@ impl Parser {
             return builtin_outcome;
         }
 
-        // If neither worked, take the one closest to a match:
-        // TODO: Test this bit.
-        if cmd_outcome.cmd_path.len() < builtin_outcome.cmd_path.len() {
-            return builtin_outcome;
-        } else {
-            return cmd_outcome;
-        }
+        return cmd_outcome;
     }
 
     pub fn parse<'a, S>(
@@ -134,20 +128,25 @@ mod test {
     #[cfg(test)]
     use pretty_assertions::assert_eq;
 
+    use std::marker::PhantomData;
+
     #[derive(Debug)]
-    struct ParseTestCommand<'a> {
+    struct ParseTestCommand<'a, S> {
         name: &'a str,
+        phantom: PhantomData<S>,
     }
 
-    impl<'a> ParseTestCommand<'a> {
-        // TODO: We may actually prefer to make this return Box<> to make our API less verbose.
-        fn new(name: &str) -> ParseTestCommand {
-            ParseTestCommand { name }
+    impl<'a, S> ParseTestCommand<'a, S> {
+        fn new(name: &str) -> ParseTestCommand<S> {
+            ParseTestCommand {
+                name,
+                phantom: PhantomData,
+            }
         }
     }
 
-    impl<'a> BaseCommand for ParseTestCommand<'a> {
-        type State = ();
+    impl<'a, S> BaseCommand for ParseTestCommand<'a, S> {
+        type State = S;
 
         fn name(&self) -> &str {
             self.name
@@ -157,7 +156,7 @@ mod test {
             Ok(())
         }
 
-        fn execute(&self, _: &mut (), _: &Vec<String>) -> Result<String> {
+        fn execute(&self, _: &mut S, _: &Vec<String>) -> Result<String> {
             Ok(String::from(""))
         }
     }
@@ -171,17 +170,36 @@ mod test {
                         Command::new_child(ParseTestCommand::new("bar-c")),
                         Command::new_child(ParseTestCommand::new("baz-c")),
                         Command::new_parent(
-                            "qux",
+                            "qux-c",
                             vec![
-                                Command::new_child(ParseTestCommand::new("quux")),
-                                Command::new_child(ParseTestCommand::new("corge")),
+                                Command::new_child(ParseTestCommand::new("quux-c")),
+                                Command::new_child(ParseTestCommand::new("corge-c")),
                             ],
                         ),
                     ],
                 ),
-                Command::new_child(ParseTestCommand::new("grault")),
+                Command::new_child(ParseTestCommand::new("grault-c")),
+                Command::new_child(ParseTestCommand::new("conflict-tie")),
+                Command::new_child(ParseTestCommand::new(
+                    "conflict-builtin-longer-match-but-still-loses",
+                )),
+                Command::new_parent(
+                    "conflict-custom-wins",
+                    vec![Command::new_child(ParseTestCommand::new("child"))],
+                ),
             ]),
-            CommandSet::new_from_vec(vec![]),
+            CommandSet::new_from_vec(vec![
+                Command::new_parent(
+                    "foo-b",
+                    vec![Command::new_child(ParseTestCommand::new("bar-b"))],
+                ),
+                Command::new_child(ParseTestCommand::new("conflict-tie")),
+                Command::new_child(ParseTestCommand::new("conflict-custom-wins")),
+                Command::new_parent(
+                    "conflict-builtin-longer-match-but-still-loses",
+                    vec![Command::new_child(ParseTestCommand::new("child"))],
+                ),
+            ]),
         )
     }
 
@@ -210,6 +228,21 @@ mod test {
                 cmd_path: vec!["foo-c", "bar-c"],
                 remaining: vec![],
                 cmd_type: CommandType::Custom,
+                complete: true,
+            }
+        );
+    }
+
+    #[test]
+    fn builtin_nesting() {
+        let cmds = make_parser_cmds();
+
+        assert_eq!(
+            Parser::new().parse("foo-b bar-b he", &cmds.0, &cmds.1),
+            Outcome {
+                cmd_path: vec!["foo-b", "bar-b"],
+                remaining: vec!["he"],
+                cmd_type: CommandType::Builtin,
                 complete: true,
             }
         );
@@ -250,9 +283,9 @@ mod test {
         let cmds = make_parser_cmds();
 
         assert_eq!(
-            Parser::new().parse("grault la la", &cmds.0, &cmds.1),
+            Parser::new().parse("grault-c la la", &cmds.0, &cmds.1),
             Outcome {
-                cmd_path: vec!["grault"],
+                cmd_path: vec!["grault-c"],
                 remaining: vec!["la", "la"],
                 cmd_type: CommandType::Custom,
                 complete: true,
@@ -265,9 +298,9 @@ mod test {
         let cmds = make_parser_cmds();
 
         assert_eq!(
-            Parser::new().parse("grault", &cmds.0, &cmds.1),
+            Parser::new().parse("grault-c", &cmds.0, &cmds.1),
             Outcome {
-                cmd_path: vec!["grault"],
+                cmd_path: vec!["grault-c"],
                 remaining: vec![],
                 cmd_type: CommandType::Custom,
                 complete: true,
@@ -280,9 +313,9 @@ mod test {
         let cmds = make_parser_cmds();
 
         assert_eq!(
-            Parser::new().parse("grault foo-c bar-c", &cmds.0, &cmds.1),
+            Parser::new().parse("grault-c foo-c bar-c", &cmds.0, &cmds.1),
             Outcome {
-                cmd_path: vec!["grault"],
+                cmd_path: vec!["grault-c"],
                 // Although these match other command names, since they come after grault, we
                 // expect them to be treated as basic arguments.
                 remaining: vec!["foo-c", "bar-c"],
@@ -327,10 +360,59 @@ mod test {
         let cmds = make_parser_cmds();
 
         assert_eq!(
-            Parser::new().parse("foo-c qux quux la la", &cmds.0, &cmds.1),
+            Parser::new().parse("foo-c qux-c quux-c la la", &cmds.0, &cmds.1),
             Outcome {
-                cmd_path: vec!["foo-c", "qux", "quux"],
+                cmd_path: vec!["foo-c", "qux-c", "quux-c"],
                 remaining: vec!["la", "la"],
+                cmd_type: CommandType::Custom,
+                complete: true,
+            }
+        );
+    }
+
+    #[test]
+    fn perfect_tie_custom_wins_tie_breaker() {
+        let cmds = make_parser_cmds();
+
+        assert_eq!(
+            Parser::new().parse("conflict-tie ha ha", &cmds.0, &cmds.1),
+            Outcome {
+                cmd_path: vec!["conflict-tie"],
+                remaining: vec!["ha", "ha"],
+                cmd_type: CommandType::Custom,
+                complete: true,
+            }
+        );
+    }
+
+    #[test]
+    fn conflict_but_builtin_has_longer_match() {
+        let cmds = make_parser_cmds();
+
+        assert_eq!(
+            Parser::new().parse(
+                "conflict-builtin-longer-match-but-still-loses child ha",
+                &cmds.0,
+                &cmds.1
+            ),
+            Outcome {
+                cmd_path: vec!["conflict-builtin-longer-match-but-still-loses"],
+                remaining: vec!["child", "ha"],
+                cmd_type: CommandType::Custom,
+                complete: true,
+            }
+        );
+    }
+
+    #[test]
+    fn conflict_but_custom_has_longer_match() {
+        let cmds = make_parser_cmds();
+
+        assert_eq!(
+            Parser::new().parse("conflict-custom-wins child ha", &cmds.0, &cmds.1),
+            Outcome {
+                cmd_path: vec!["conflict-custom-wins", "child"],
+                remaining: vec!["ha"],
                 cmd_type: CommandType::Custom,
                 complete: true,
             }
