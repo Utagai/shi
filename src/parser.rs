@@ -47,10 +47,11 @@ impl Parser {
                 None => {
                     return Outcome {
                         cmd_path,
+                        // NOTE Since i < len, .get(i..) will never panic.
                         remaining: tokens.get(i..).unwrap().to_vec(),
                         cmd_type,
                         complete: false,
-                    }
+                    };
                 }
             };
 
@@ -63,6 +64,7 @@ impl Parser {
                     // This is a leaf command, so we are actually simply done.
                     return Outcome {
                         cmd_path,
+                        // NOTE Since i < len, .get(i+1..) will never panic.
                         remaining: tokens.get(i + 1..).unwrap().to_vec(),
                         cmd_type,
                         complete: true,
