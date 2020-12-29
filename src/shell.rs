@@ -91,8 +91,8 @@ impl<'a, S> Shell<'a, S> {
         Ok(())
     }
 
-    pub fn eval(&mut self, line: String) -> Result<String> {
-        self.rl.add_history_entry(line.as_str());
+    pub fn eval(&mut self, line: &str) -> Result<String> {
+        self.rl.add_history_entry(line);
         let mut splits = line.split(' ');
         let potential_cmd = match splits.nth(0) {
             Some(cmd) => cmd,
@@ -127,10 +127,13 @@ impl<'a, S> Shell<'a, S> {
             let input = self.rl.readline(self.prompt);
 
             match input {
-                Ok(line) => match self.eval(line) {
+                Ok(line) => match self.eval(&line) {
                     Ok(output) => println!("{}", output),
                     Err(err) => {
-                        println!("{:?}", err);
+                        let outcome = self.parser.parse(&line, &self.cmds, &self.builtins);
+                        if !outcome.complete {
+                            println!("{}", outcome.error_msg(Some(&format!("{:?}", err))));
+                        }
                         return Ok(());
                     }
                 },
