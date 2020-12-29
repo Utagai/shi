@@ -49,7 +49,13 @@ impl Parser {
                         cmd_path,
                         // NOTE Since i < len, .get(i..) will never panic.
                         remaining: tokens.get(i..).unwrap().to_vec(),
-                        cmd_type,
+                        cmd_type: if i == 0 {
+                            // If this is the first lookup, then obviously we have no idea what the
+                            // type is.
+                            CommandType::Unknown
+                        } else {
+                            cmd_type
+                        },
                         complete: false,
                     };
                 }
@@ -101,6 +107,7 @@ impl Parser {
         }
 
         // If neither worked, take the one closest to a match:
+        // TODO: Test this bit.
         if cmd_outcome.cmd_path.len() < builtin_outcome.cmd_path.len() {
             return builtin_outcome;
         } else {
@@ -179,7 +186,7 @@ mod test {
     }
 
     #[test]
-    fn nested_simple() {
+    fn nesting() {
         let cmds = make_parser_cmds();
 
         assert_eq!(
@@ -187,6 +194,21 @@ mod test {
             Outcome {
                 cmd_path: vec!["foo-c", "bar-c"],
                 remaining: vec!["he"],
+                cmd_type: CommandType::Custom,
+                complete: true,
+            }
+        );
+    }
+
+    #[test]
+    fn nesting_no_args() {
+        let cmds = make_parser_cmds();
+
+        assert_eq!(
+            Parser::new().parse("foo-c bar-c", &cmds.0, &cmds.1),
+            Outcome {
+                cmd_path: vec!["foo-c", "bar-c"],
+                remaining: vec![],
                 cmd_type: CommandType::Custom,
                 complete: true,
             }
@@ -209,23 +231,102 @@ mod test {
     }
 
     #[test]
+    fn invalid_subcmd() {
+        let cmds = make_parser_cmds();
+
+        assert_eq!(
+            Parser::new().parse("foo-c he", &cmds.0, &cmds.1),
+            Outcome {
+                cmd_path: vec!["foo-c"],
+                remaining: vec!["he"],
+                cmd_type: CommandType::Custom,
+                complete: false,
+            }
+        );
+    }
+
+    #[test]
+    fn no_nesting() {
+        let cmds = make_parser_cmds();
+
+        assert_eq!(
+            Parser::new().parse("grault la la", &cmds.0, &cmds.1),
+            Outcome {
+                cmd_path: vec!["grault"],
+                remaining: vec!["la", "la"],
+                cmd_type: CommandType::Custom,
+                complete: true,
+            }
+        );
+    }
+
+    #[test]
+    fn no_args_no_nesting() {
+        let cmds = make_parser_cmds();
+
+        assert_eq!(
+            Parser::new().parse("grault", &cmds.0, &cmds.1),
+            Outcome {
+                cmd_path: vec!["grault"],
+                remaining: vec![],
+                cmd_type: CommandType::Custom,
+                complete: true,
+            }
+        );
+    }
+
+    #[test]
+    fn cmd_has_args_that_match_other_cmds() {
+        let cmds = make_parser_cmds();
+
+        assert_eq!(
+            Parser::new().parse("grault foo-c bar-c", &cmds.0, &cmds.1),
+            Outcome {
+                cmd_path: vec!["grault"],
+                // Although these match other command names, since they come after grault, we
+                // expect them to be treated as basic arguments.
+                remaining: vec!["foo-c", "bar-c"],
+                cmd_type: CommandType::Custom,
+                complete: true,
+            }
+        );
+    }
+
+    #[test]
+    fn nonexistent_cmd() {
+        let cmds = make_parser_cmds();
+
+        assert_eq!(
+            Parser::new().parse("notacmd", &cmds.0, &cmds.1),
+            Outcome {
+                cmd_path: vec![],
+                remaining: vec!["notacmd"],
+                cmd_type: CommandType::Unknown,
+                complete: false,
+            }
+        );
+    }
+
+    #[test]
+    fn args_with_nonexistent_cmd() {
+        let cmds = make_parser_cmds();
+
+        assert_eq!(
+            Parser::new().parse("notacmd la la", &cmds.0, &cmds.1),
+            Outcome {
+                cmd_path: vec![],
+                remaining: vec!["notacmd", "la", "la"],
+                cmd_type: CommandType::Unknown,
+                complete: false,
+            }
+        );
+    }
+
+    #[test]
     fn test() {
         let cmds = make_parser_cmds();
         let p = Parser::new();
 
-        println!("Parse outcome: {:?}", p.parse("foo-c he", &cmds.0, &cmds.1));
-        println!(
-            "Parse outcome: {:?}",
-            p.parse("grault lala", &cmds.0, &cmds.1)
-        );
-        println!(
-            "Parse outcome: {:?}",
-            p.parse("grault foo-c bar-c", &cmds.0, &cmds.1)
-        );
-        println!(
-            "Parse outcome: {:?}",
-            p.parse("notacmd ha ha", &cmds.0, &cmds.1)
-        );
         println!(
             "Parse outcome: {:?}",
             p.parse("foo-c qux quux", &cmds.0, &cmds.1)
