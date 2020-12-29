@@ -185,5 +185,27 @@ mod test {
             "Parse outcome: {:?}",
             p.parse("foo-c bar-c he", &cmds.0, &cmds.1)
         );
+
+        println!("Parse outcome: {:?}", p.parse("foo-c he", &cmds.0, &cmds.1));
+        println!(
+            "Parse outcome: {:?}",
+            p.parse("grault lala", &cmds.0, &cmds.1)
+        );
+        println!(
+            "Parse outcome: {:?}",
+            p.parse("grault foo-c bar-c", &cmds.0, &cmds.1)
+        );
+        println!(
+            "Parse outcome: {:?}",
+            p.parse("notacmd ha ha", &cmds.0, &cmds.1)
+        );
+        println!(
+            "Parse outcome: {:?}",
+            p.parse("foo-c qux quux", &cmds.0, &cmds.1)
+        );
+        println!(
+            "Parse outcome: {:?}",
+            p.parse("foo-c qux quux la la la", &cmds.0, &cmds.1)
+        );
     }
 }
