@@ -7,14 +7,14 @@ pub struct Parser {
     tokenizer: DefaultTokenizer,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum CommandType {
     Builtin,
     Custom,
     Unknown,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Outcome<'a> {
     cmd_path: Vec<&'a str>,
     remaining: Vec<&'a str>,
@@ -78,9 +78,9 @@ impl Parser {
 
         Outcome {
             cmd_path: Vec::new(),
-            remaining: Vec::new(),
-            cmd_type,
-            complete: true,
+            remaining: tokens.to_vec(),
+            cmd_type: CommandType::Unknown,
+            complete: false,
         }
     }
 
@@ -123,6 +123,9 @@ mod test {
     use super::*;
 
     use anyhow::Result;
+
+    #[cfg(test)]
+    use pretty_assertions::assert_eq;
 
     #[derive(Debug)]
     struct ParseTestCommand<'a> {
@@ -176,14 +179,39 @@ mod test {
     }
 
     #[test]
+    fn nested_simple() {
+        let cmds = make_parser_cmds();
+
+        assert_eq!(
+            Parser::new().parse("foo-c bar-c he", &cmds.0, &cmds.1),
+            Outcome {
+                cmd_path: vec!["foo-c", "bar-c"],
+                remaining: vec!["he"],
+                cmd_type: CommandType::Custom,
+                complete: true,
+            }
+        );
+    }
+
+    #[test]
+    fn empty() {
+        let cmds = make_parser_cmds();
+
+        assert_eq!(
+            Parser::new().parse("", &cmds.0, &cmds.1),
+            Outcome {
+                cmd_path: vec![],
+                remaining: vec![],
+                cmd_type: CommandType::Unknown,
+                complete: false,
+            }
+        );
+    }
+
+    #[test]
     fn test() {
         let cmds = make_parser_cmds();
         let p = Parser::new();
-
-        println!(
-            "Parse outcome: {:?}",
-            p.parse("foo-c bar-c he", &cmds.0, &cmds.1)
-        );
 
         println!("Parse outcome: {:?}", p.parse("foo-c he", &cmds.0, &cmds.1));
         println!(
