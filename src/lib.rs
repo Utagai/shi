@@ -98,19 +98,8 @@ mod test {
         ))?;
         shell.register(Command::new_child(CustomCommand::new()))?;
 
-        shell.run()?;
+        // shell.run()?;
 
         Ok(())
-    }
-
-    #[test]
-    fn it_works() {
-        match fake_main() {
-            Ok(_) => println!("YAY!"),
-            Err(err) => {
-                println!("ERR: {:?}", err);
-                assert_eq!(0, 1);
-            }
-        }
     }
 }
