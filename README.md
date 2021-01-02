@@ -107,5 +107,5 @@ bye
 ```
 
 ## Contributing
-This is my first Rust crate, so I welcome any and all feedback from those more experienced.
+This is my first Rust crate, so I welcome any and all feedback, even from fellow newbies.
 There is no process for this though. Just open an issue or a PR. :slightly_smiling_face:
