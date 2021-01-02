@@ -23,6 +23,21 @@ pub struct Shell<'a, S> {
     pub(crate) terminate: bool,
 }
 
+impl<'a> Shell<'a, ()> {
+    pub fn new(prompt: &'a str) -> Shell<()> {
+        Shell {
+            prompt,
+            rl: Readline::new(),
+            parser: Parser::new(),
+            cmds: CommandSet::new(),
+            builtins: Rc::new(Shell::build_builtins()),
+            history_file: None,
+            state: (),
+            terminate: false,
+        }
+    }
+}
+
 impl<'a, S> Shell<'a, S> {
     fn build_builtins() -> CommandSet<'a, Shell<'a, S>>
     where
@@ -35,21 +50,6 @@ impl<'a, S> Shell<'a, S> {
         builtins.add(Command::new_child(HistoryCommand::new()));
 
         return builtins;
-    }
-
-    // TODO: Apparently, this doesn't help rustc infer the type, even though we hardcoded what the
-    // type of the shell is in this case.
-    pub fn new(prompt: &'a str) -> Shell<()> {
-        Shell {
-            prompt,
-            rl: Readline::new(),
-            parser: Parser::new(),
-            cmds: CommandSet::new(),
-            builtins: Rc::new(Shell::build_builtins()),
-            history_file: None,
-            state: (),
-            terminate: false,
-        }
     }
 
     pub fn new_with_state(prompt: &'a str, state: S) -> Shell<S>
