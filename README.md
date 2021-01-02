@@ -16,6 +16,8 @@ Currently, `shi` is actually usable. The majority of remaining work involves qua
 * Upload to [crates.io](https://crates.io/) and linking to [docs.rs](https://docs.rs/).
 * Implement multi-line input (via `\`).
 * Add support for flags (named arguments) to commands.
+* Flesh out the help/docs of commands in `shi`.
+* Switch to using `thiserror` instead of `anyhow`, since this is not a binary.
 
 ## Example
 This is a pretty simple example. It uses no state, and has only one level of nesting. The actual Rust code for this can be found in `./examples/simple.rs`.
