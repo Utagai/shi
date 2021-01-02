@@ -125,7 +125,7 @@ impl Parser {
             // If it is a leaf command, and has we're actually done and can return the current
             // cmd_path and remaining tokens and complete.
             match &**looked_up_cmd {
-                Command::Child(_) => {
+                Command::Leaf(_) => {
                     // This is a leaf command, so we are actually simply done.
                     return Outcome {
                         cmd_path,
@@ -232,37 +232,37 @@ mod test {
                 Command::new_parent(
                     "foo-c",
                     vec![
-                        Command::new_child(ParseTestCommand::new("bar-c")),
-                        Command::new_child(ParseTestCommand::new("baz-c")),
+                        Command::new_leaf(ParseTestCommand::new("bar-c")),
+                        Command::new_leaf(ParseTestCommand::new("baz-c")),
                         Command::new_parent(
                             "qux-c",
                             vec![
-                                Command::new_child(ParseTestCommand::new("quux-c")),
-                                Command::new_child(ParseTestCommand::new("corge-c")),
+                                Command::new_leaf(ParseTestCommand::new("quux-c")),
+                                Command::new_leaf(ParseTestCommand::new("corge-c")),
                             ],
                         ),
                     ],
                 ),
-                Command::new_child(ParseTestCommand::new("grault-c")),
-                Command::new_child(ParseTestCommand::new("conflict-tie")),
-                Command::new_child(ParseTestCommand::new(
+                Command::new_leaf(ParseTestCommand::new("grault-c")),
+                Command::new_leaf(ParseTestCommand::new("conflict-tie")),
+                Command::new_leaf(ParseTestCommand::new(
                     "conflict-builtin-longer-match-but-still-loses",
                 )),
                 Command::new_parent(
                     "conflict-custom-wins",
-                    vec![Command::new_child(ParseTestCommand::new("child"))],
+                    vec![Command::new_leaf(ParseTestCommand::new("child"))],
                 ),
             ]),
             CommandSet::new_from_vec(vec![
                 Command::new_parent(
                     "foo-b",
-                    vec![Command::new_child(ParseTestCommand::new("bar-b"))],
+                    vec![Command::new_leaf(ParseTestCommand::new("bar-b"))],
                 ),
-                Command::new_child(ParseTestCommand::new("conflict-tie")),
-                Command::new_child(ParseTestCommand::new("conflict-custom-wins")),
+                Command::new_leaf(ParseTestCommand::new("conflict-tie")),
+                Command::new_leaf(ParseTestCommand::new("conflict-custom-wins")),
                 Command::new_parent(
                     "conflict-builtin-longer-match-but-still-loses",
-                    vec![Command::new_child(ParseTestCommand::new("child"))],
+                    vec![Command::new_leaf(ParseTestCommand::new("child"))],
                 ),
             ]),
         )

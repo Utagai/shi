@@ -88,7 +88,7 @@ impl<'a, S> HelpTreeCommand<'a, S> {
             let last = i == cmds.len() - 1;
             self.add_name_to_lines(&ctx.with_last(last), lines, cmd.name());
             match &**cmd {
-                Command::Child(_) => continue, // We can't recurse in this case.
+                Command::Leaf(_) => continue, // We can't recurse in this case.
                 Command::Parent(parent_cmd) => {
                     // We need to recurse another level for our children.
                     self.add_tree_lines_for_children(

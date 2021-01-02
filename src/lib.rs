@@ -48,11 +48,11 @@ mod test {
         let mut shell = Shell::new_with_state("| ", lst);
 
         shell.set_history_file("readline_history.txt")?;
-        shell.register(Command::new_child(EchoCommand::new()))?;
-        shell.register(Command::new_child(BasicCommand::new("remove", |_, _| {
+        shell.register(Command::new_leaf(EchoCommand::new()))?;
+        shell.register(Command::new_leaf(BasicCommand::new("remove", |_, _| {
             Ok(String::from("I AM REMOVE CLOSURE!!!"))
         })))?;
-        shell.register(Command::new_child(BasicCommand::new(
+        shell.register(Command::new_leaf(BasicCommand::new(
             "list",
             |the_lst: &mut Vec<String>, _| {
                 Ok(format!(
@@ -68,7 +68,7 @@ mod test {
         shell.register(Command::new_parent(
             "add",
             vec![
-                Command::new_child(BasicCommand::new(
+                Command::new_leaf(BasicCommand::new(
                     "title",
                     |the_lst: &mut Vec<String>, _| {
                         the_lst.push("title".to_owned());
@@ -78,14 +78,14 @@ mod test {
                 Command::new_parent(
                     "isbn",
                     vec![
-                        Command::new_child(BasicCommand::new(
+                        Command::new_leaf(BasicCommand::new(
                             "eu",
                             |the_lst: &mut Vec<String>, _| {
                                 the_lst.push("eu".to_owned());
                                 Ok(String::from("Added 'eu'"))
                             },
                         )),
-                        Command::new_child(BasicCommand::new(
+                        Command::new_leaf(BasicCommand::new(
                             "us",
                             |the_lst: &mut Vec<String>, _| {
                                 the_lst.push("us".to_owned());
@@ -96,7 +96,7 @@ mod test {
                 ),
             ],
         ))?;
-        shell.register(Command::new_child(CustomCommand::new()))?;
+        shell.register(Command::new_leaf(CustomCommand::new()))?;
 
         // shell.run()?;
 

@@ -44,10 +44,10 @@ impl<'a, S> Shell<'a, S> {
         S: 'a,
     {
         let mut builtins: CommandSet<'a, Shell<'a, S>> = CommandSet::new();
-        builtins.add(Command::new_child(HelpCommand::new()));
-        builtins.add(Command::new_child(HelpTreeCommand::new()));
-        builtins.add(Command::new_child(ExitCommand::new()));
-        builtins.add(Command::new_child(HistoryCommand::new()));
+        builtins.add(Command::new_leaf(HelpCommand::new()));
+        builtins.add(Command::new_leaf(HelpTreeCommand::new()));
+        builtins.add(Command::new_leaf(ExitCommand::new()));
+        builtins.add(Command::new_leaf(HistoryCommand::new()));
 
         return builtins;
     }
@@ -136,7 +136,6 @@ impl<'a, S> Shell<'a, S> {
                         } else {
                             println!("{:?}", err)
                         }
-                        return Ok(());
                     }
                 },
                 Err(ReadlineError::Interrupted) => {

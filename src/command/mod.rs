@@ -25,17 +25,17 @@ pub use basic::BasicCommand;
 
 pub enum Command<'a, S> {
     // TODO: This should be called Leaf.
-    Child(Box<dyn BaseCommand<State = S> + 'a>),
+    Leaf(Box<dyn BaseCommand<State = S> + 'a>),
     // TODO: Do we want to make Parent commands a trait?
     Parent(ParentCommand<'a, S>),
 }
 
 impl<'a, S> Command<'a, S> {
-    pub fn new_child<C>(child_cmd: C) -> Self
+    pub fn new_leaf<C>(child_cmd: C) -> Self
     where
         C: BaseCommand<State = S> + 'a,
     {
-        Self::Child(Box::new(child_cmd))
+        Self::Leaf(Box::new(child_cmd))
     }
 
     pub fn new_parent(name: &'a str, sub_cmds: Vec<Command<'a, S>>) -> Self {
@@ -48,28 +48,28 @@ impl<'a, S> BaseCommand for Command<'a, S> {
 
     fn name(&self) -> &str {
         match self {
-            Self::Child(cmd) => cmd.name(),
+            Self::Leaf(cmd) => cmd.name(),
             Self::Parent(parent_cmd) => parent_cmd.name(),
         }
     }
 
     fn validate_args(&self, args: &Vec<String>) -> Result<()> {
         match self {
-            Self::Child(cmd) => cmd.validate_args(args),
+            Self::Leaf(cmd) => cmd.validate_args(args),
             Self::Parent(parent_cmd) => parent_cmd.validate_args(args),
         }
     }
 
     fn execute(&self, state: &mut Self::State, args: &Vec<String>) -> Result<String> {
         match self {
-            Self::Child(cmd) => cmd.execute(state, args),
+            Self::Leaf(cmd) => cmd.execute(state, args),
             Self::Parent(parent_cmd) => parent_cmd.execute(state, args),
         }
     }
 
     fn help(&self) -> String {
         match self {
-            Self::Child(cmd) => cmd.help(),
+            Self::Leaf(cmd) => cmd.help(),
             Self::Parent(parent_cmd) => parent_cmd.help(),
         }
     }
