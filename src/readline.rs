@@ -79,7 +79,6 @@ impl Completer for ExecHelper {
         pos: usize,
         _: &Context<'_>,
     ) -> rustyline::Result<(usize, Vec<Pair>)> {
-        println!("COMPLETE()");
         self.completer.complete(line, pos)
     }
 }
