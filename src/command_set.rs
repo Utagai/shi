@@ -69,3 +69,128 @@ impl<'a, S: 'a> IntoIterator for &'a CommandSet<'a, S> {
         self.iter()
     }
 }
+
+// Since the CommandSet is just a wrapper around a HashMap, we don't really care too much about
+// making very exhaustive or precise tests.
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    use crate::command::{BaseCommand, Command};
+
+    use anyhow::Result;
+
+    struct EmptyCommand<'a> {
+        name: &'a str,
+    }
+
+    impl<'a> EmptyCommand<'a> {
+        fn new(name: &'a str) -> EmptyCommand<'a> {
+            EmptyCommand { name }
+        }
+    }
+
+    impl<'a> BaseCommand for EmptyCommand<'a> {
+        type State = ();
+
+        fn name(&self) -> &str {
+            self.name
+        }
+
+        #[cfg(not(tarpaulin_include))]
+        fn validate_args(&self, _: &Vec<String>) -> Result<()> {
+            Ok(())
+        }
+
+        #[cfg(not(tarpaulin_include))]
+        fn execute(&self, _: &mut Self::State, _: &Vec<String>) -> Result<String> {
+            Ok(String::from(""))
+        }
+    }
+
+    #[test]
+    fn get() {
+        let cmd_set = CommandSet::new_from_vec(vec![
+            Command::new_leaf(EmptyCommand::new("a")),
+            Command::new_leaf(EmptyCommand::new("b")),
+            Command::new_leaf(EmptyCommand::new("c")),
+        ]);
+
+        // First of all, this should exist.
+        assert!(cmd_set.get("b").is_some());
+
+        // And this should be the 'b' command.
+        assert_eq!(cmd_set.get("b").unwrap().name(), "b");
+    }
+
+    #[test]
+    fn add() {
+        let mut cmd_set = CommandSet::new();
+
+        // Should not exist yet.
+        assert!(cmd_set.get("a").is_none());
+
+        cmd_set.add(Command::new_leaf(EmptyCommand::new("a")));
+
+        // And now it should exist, so we should have that command we just added.
+        assert_eq!(cmd_set.get("a").unwrap().name(), "a");
+    }
+
+    #[test]
+    fn contains() {
+        let cmd_set = CommandSet::new_from_vec(vec![Command::new_leaf(EmptyCommand::new("b"))]);
+
+        // Test that an element that exists is properly detected.
+        assert!(cmd_set.contains("b"));
+        // Test that an element that DOESN'T exist is properly (not?) detected.
+        assert!(!cmd_set.contains("I DONT EXIST"));
+    }
+
+    #[test]
+    fn len() {
+        let mut cmd_set = CommandSet::new();
+
+        // Empty, so len() == 0:
+        assert_eq!(cmd_set.len(), 0);
+
+        // Adding one guy should mean our len is now 1...
+        cmd_set.add(Command::new_leaf(EmptyCommand::new("a")));
+
+        // So expect 1...
+        assert_eq!(cmd_set.len(), 1);
+
+        // Add some new stuff...
+        cmd_set.add(Command::new_leaf(EmptyCommand::new("b")));
+        cmd_set.add(Command::new_leaf(EmptyCommand::new("c")));
+
+        // So expect 3 now cause 1 + 2 = 3...
+        assert_eq!(cmd_set.len(), 3);
+    }
+
+    #[test]
+    fn iter() {
+        let cmd_set = CommandSet::new_from_vec(vec![
+            Command::new_leaf(EmptyCommand::new("a")),
+            Command::new_leaf(EmptyCommand::new("b")),
+            Command::new_leaf(EmptyCommand::new("c")),
+        ]);
+
+        // We should expect to find 1 of a, b and c.
+        let mut num_a = 0;
+        let mut num_b = 0;
+        let mut num_c = 0;
+
+        for cmd in &cmd_set {
+            match cmd.name() {
+                "a" => num_a += 1,
+                "b" => num_b += 1,
+                "c" => num_c += 1,
+                _ => panic!("unexpected command name from iteration"),
+            }
+        }
+
+        assert_eq!(num_a, 1);
+        assert_eq!(num_b, 1);
+        assert_eq!(num_c, 1);
+    }
+}

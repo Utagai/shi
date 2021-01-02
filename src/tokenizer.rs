@@ -10,7 +10,7 @@ pub struct DefaultTokenizer {
     quotations: Vec<char>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 struct QuoteLoc {
     pos: usize,
     quotation: char,
@@ -174,6 +174,26 @@ impl DefaultTokenizer {
 
         splitted_parts
     }
+}
+
+#[cfg(test)]
+#[test]
+fn test_find_quotes() {
+    let tokenizer = DefaultTokenizer::new(vec!['\'']);
+    let quote_locs = tokenizer.find_quotes("hello 'how are' you?");
+    assert_eq!(
+        quote_locs,
+        vec![
+            QuoteLoc {
+                pos: 6,
+                quotation: '\''
+            },
+            QuoteLoc {
+                pos: 14,
+                quotation: '\''
+            }
+        ]
+    );
 }
 
 impl Tokenizer for DefaultTokenizer {

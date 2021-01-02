@@ -217,10 +217,12 @@ mod test {
             self.name
         }
 
+        #[cfg(not(tarpaulin_include))]
         fn validate_args(&self, _: &Vec<String>) -> Result<()> {
             Ok(())
         }
 
+        #[cfg(not(tarpaulin_include))]
         fn execute(&self, _: &mut S, _: &Vec<String>) -> Result<String> {
             Ok(String::from(""))
         }
@@ -600,6 +602,18 @@ mod test {
                 ]
                 .join(""),
             );
+        }
+
+        #[test]
+        fn error_msg_is_blank_for_complete_parse() {
+            let outcome = Outcome {
+                cmd_path: vec![],
+                remaining: vec![],
+                cmd_type: CommandType::Custom,
+                complete: true,
+            };
+
+            assert_eq!(outcome.error_msg(None), String::from(""));
         }
     }
 }
