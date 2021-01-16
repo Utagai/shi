@@ -95,9 +95,10 @@ Failed to parse fully:
 expected a valid subcommand
 instead, got: 'DNE';
 
-         => expected one of ["panther", "felinae"], got DNE
-
 Run 'felid help' for more info on the command.
+
+         => expected one of 'felinae' or 'panther'.
+
 Run 'helptree' for more info on the entire command tree.
 
 | felid felinae domestic-cat
