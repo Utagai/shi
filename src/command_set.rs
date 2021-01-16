@@ -202,4 +202,17 @@ mod test {
         assert_eq!(num_b, 1);
         assert_eq!(num_c, 1);
     }
+
+    #[test]
+    fn names() {
+        let cmd_set = CommandSet::new_from_vec(vec![
+            Command::new_leaf(EmptyCommand::new("a")),
+            Command::new_leaf(EmptyCommand::new("b")),
+            Command::new_leaf(EmptyCommand::new("c")),
+        ]);
+
+        let names = cmd_set.names();
+
+        assert_eq!(vec!["a", "b", "c"], names);
+    }
 }
