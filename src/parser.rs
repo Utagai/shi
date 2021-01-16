@@ -1,4 +1,4 @@
-use crate::command::{BaseCommand, Command};
+use crate::command::Command;
 use crate::command_set::CommandSet;
 use crate::shell::Shell;
 use crate::tokenizer::{DefaultTokenizer, Tokenizer};
@@ -24,7 +24,7 @@ pub struct Outcome<'a> {
 }
 
 impl<'a> Outcome<'a> {
-    pub fn error_msg(&self, eval_err_msg: Option<&str>) -> String {
+    pub fn error_msg(&self) -> String {
         if self.complete {
             return String::from("");
         }
@@ -64,15 +64,23 @@ impl<'a> Outcome<'a> {
                 msg.push_str("nothing;\n")
             }
 
-            if let Some(eval_err_msg) = eval_err_msg {
-                msg.push_str(&format!("\n\t => {}\n", eval_err_msg));
-            }
-
             msg.push_str("\n");
             msg.push_str(&format!(
                 "Run '{} help' for more info on the command.",
                 valid_prefix
             ));
+        }
+
+        if !self.possibilities.is_empty() {
+            msg.push_str("\n\n");
+            msg.push_str(&format!(
+                "\t => expected one of {}.\n",
+                self.possibilities
+                    .iter()
+                    .map(|s| format!("'{}'", s))
+                    .collect::<Vec<String>>()
+                    .join(" or ")
+            ))
         }
 
         msg.push_str("\n");
@@ -559,7 +567,7 @@ mod test {
             };
 
             assert_eq!(
-                outcome.error_msg(Some("expected one of [baz, qux, quux], got 'la'")),
+                outcome.error_msg(),
                 vec![
                     "Failed to parse fully:\n",
                     "\n",
@@ -568,8 +576,6 @@ mod test {
                     "\t             ^\n",
                     "expected a valid subcommand\n",
                     "instead, got: 'la';\n",
-                    "\n",
-                    "\t => expected one of [baz, qux, quux], got 'la'\n",
                     "\n",
                     "Run 'foo bar help' for more info on the command.\n",
                     "Run 'helptree' for more info on the entire command tree.\n",
@@ -589,7 +595,7 @@ mod test {
             };
 
             assert_eq!(
-                outcome.error_msg(Some("expected one of [baz, qux, quux], got nothing")),
+                outcome.error_msg(),
                 vec![
                     "Failed to parse fully:\n",
                     "\n",
@@ -598,8 +604,6 @@ mod test {
                     "\t             ^\n",
                     "expected a valid subcommand\n",
                     "instead, got: nothing;\n",
-                    "\n",
-                    "\t => expected one of [baz, qux, quux], got nothing\n",
                     "\n",
                     "Run 'foo bar help' for more info on the command.\n",
                     "Run 'helptree' for more info on the entire command tree.\n",
@@ -625,9 +629,13 @@ mod test {
             };
 
             assert_eq!(
-                outcome.error_msg(None),
+                outcome.error_msg(),
                 vec![
                     "Empty string could not be parsed as a command.\n",
+                    "\n",
+                    "\n",
+                    "\t => expected one of 'conflict-tie' or 'conflict-builtin-longer-match-but-still-loses' or 'conflict-custom-wins' or 'foo-c' or 'grault-c'.",
+                    "\n",
                     "\n",
                     "Run 'helptree' for more info on the entire command tree.\n",
                 ]
@@ -646,7 +654,7 @@ mod test {
             };
 
             assert_eq!(
-                outcome.error_msg(None),
+                outcome.error_msg(),
                 vec![
                     "'notfound' is not a recognized command.\n",
                     "\n",
@@ -666,7 +674,7 @@ mod test {
                 complete: true,
             };
 
-            assert_eq!(outcome.error_msg(None), String::from(""));
+            assert_eq!(outcome.error_msg(), String::from(""));
         }
     }
 }

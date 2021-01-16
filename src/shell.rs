@@ -132,7 +132,7 @@ impl<'a, S> Shell<'a, S> {
                     Err(err) => {
                         let outcome = self.parser.parse(&line, &self.cmds, &self.builtins);
                         if !outcome.complete {
-                            println!("{}", outcome.error_msg(Some(&format!("{:?}", err))));
+                            println!("{}", outcome.error_msg());
                         } else {
                             println!("{:?}", err)
                         }
