@@ -42,6 +42,15 @@ impl<'a, S> CommandSet<'a, S> {
         self.cmds.len()
     }
 
+    /// Returns a vector of all the command names of this command set, at the topmost/root level.
+    pub fn names(&self) -> Vec<String> {
+        let mut names_vec: Vec<String> = self.iter().map(|cmd| cmd.name().to_string()).collect();
+        // Since we are really just a map under the hood, we have no guaranteed ordering. This
+        // helps this method be deterministic.
+        names_vec.sort();
+        return names_vec;
+    }
+
     pub fn iter(&self) -> CommandSetIterator<S> {
         CommandSetIterator {
             iter: self.cmds.iter(),

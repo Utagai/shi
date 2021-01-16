@@ -1,4 +1,4 @@
-use crate::command::Command;
+use crate::command::{BaseCommand, Command};
 use crate::command_set::CommandSet;
 use crate::shell::Shell;
 use crate::tokenizer::{DefaultTokenizer, Tokenizer};
@@ -19,6 +19,7 @@ pub struct Outcome<'a> {
     cmd_path: Vec<&'a str>,
     remaining: Vec<&'a str>,
     cmd_type: CommandType,
+    pub possibilities: Vec<String>,
     pub complete: bool,
 }
 
@@ -115,6 +116,7 @@ impl Parser {
                         } else {
                             cmd_type
                         },
+                        possibilities: current_set.names(),
                         complete: false,
                     };
                 }
@@ -132,6 +134,7 @@ impl Parser {
                         // NOTE Since i < len, .get(i+1..) will never panic.
                         remaining: tokens.get(i + 1..).unwrap().to_vec(),
                         cmd_type,
+                        possibilities: Vec::new(),
                         complete: true,
                     };
                 }
@@ -141,6 +144,7 @@ impl Parser {
             }
         }
 
+        // We will basically only arrive here if the number of tokens is zero.
         Outcome {
             cmd_path,
             remaining: Vec::new(), // If we get here, we are out of tokens anyways.
@@ -149,6 +153,7 @@ impl Parser {
             } else {
                 cmd_type
             },
+            possibilities: current_set.names(),
             complete: false,
         }
     }
@@ -280,6 +285,7 @@ mod test {
                 cmd_path: vec!["foo-c", "bar-c"],
                 remaining: vec!["he"],
                 cmd_type: CommandType::Custom,
+                possibilities: Vec::new(),
                 complete: true,
             }
         );
@@ -295,6 +301,7 @@ mod test {
                 cmd_path: vec!["foo-c", "bar-c"],
                 remaining: vec![],
                 cmd_type: CommandType::Custom,
+                possibilities: Vec::new(),
                 complete: true,
             }
         );
@@ -310,6 +317,7 @@ mod test {
                 cmd_path: vec!["foo-c", "qux-c"],
                 remaining: vec![],
                 cmd_type: CommandType::Custom,
+                possibilities: vec![String::from("corge-c"), String::from("quux-c")],
                 complete: false,
             }
         );
@@ -325,6 +333,7 @@ mod test {
                 cmd_path: vec!["foo-b", "bar-b"],
                 remaining: vec!["he"],
                 cmd_type: CommandType::Builtin,
+                possibilities: Vec::new(),
                 complete: true,
             }
         );
@@ -340,6 +349,13 @@ mod test {
                 cmd_path: vec![],
                 remaining: vec![],
                 cmd_type: CommandType::Unknown,
+                possibilities: vec![
+                    String::from("conflict-builtin-longer-match-but-still-loses"),
+                    String::from("conflict-custom-wins"),
+                    String::from("conflict-tie"),
+                    String::from("foo-c"),
+                    String::from("grault-c"),
+                ],
                 complete: false,
             }
         );
@@ -355,6 +371,11 @@ mod test {
                 cmd_path: vec!["foo-c"],
                 remaining: vec!["he"],
                 cmd_type: CommandType::Custom,
+                possibilities: vec![
+                    String::from("bar-c"),
+                    String::from("baz-c"),
+                    String::from("qux-c"),
+                ],
                 complete: false,
             }
         );
@@ -370,6 +391,7 @@ mod test {
                 cmd_path: vec!["grault-c"],
                 remaining: vec!["la", "la"],
                 cmd_type: CommandType::Custom,
+                possibilities: Vec::new(),
                 complete: true,
             }
         );
@@ -385,6 +407,7 @@ mod test {
                 cmd_path: vec!["grault-c"],
                 remaining: vec![],
                 cmd_type: CommandType::Custom,
+                possibilities: Vec::new(),
                 complete: true,
             }
         );
@@ -402,6 +425,7 @@ mod test {
                 // expect them to be treated as basic arguments.
                 remaining: vec!["foo-c", "bar-c"],
                 cmd_type: CommandType::Custom,
+                possibilities: Vec::new(),
                 complete: true,
             }
         );
@@ -417,6 +441,13 @@ mod test {
                 cmd_path: vec![],
                 remaining: vec!["notacmd"],
                 cmd_type: CommandType::Unknown,
+                possibilities: vec![
+                    String::from("conflict-builtin-longer-match-but-still-loses"),
+                    String::from("conflict-custom-wins"),
+                    String::from("conflict-tie"),
+                    String::from("foo-c"),
+                    String::from("grault-c"),
+                ],
                 complete: false,
             }
         );
@@ -432,6 +463,13 @@ mod test {
                 cmd_path: vec![],
                 remaining: vec!["notacmd", "la", "la"],
                 cmd_type: CommandType::Unknown,
+                possibilities: vec![
+                    String::from("conflict-builtin-longer-match-but-still-loses"),
+                    String::from("conflict-custom-wins"),
+                    String::from("conflict-tie"),
+                    String::from("foo-c"),
+                    String::from("grault-c"),
+                ],
                 complete: false,
             }
         );
@@ -447,6 +485,7 @@ mod test {
                 cmd_path: vec!["foo-c", "qux-c", "quux-c"],
                 remaining: vec!["la", "la"],
                 cmd_type: CommandType::Custom,
+                possibilities: Vec::new(),
                 complete: true,
             }
         );
@@ -462,6 +501,7 @@ mod test {
                 cmd_path: vec!["conflict-tie"],
                 remaining: vec!["ha", "ha"],
                 cmd_type: CommandType::Custom,
+                possibilities: Vec::new(),
                 complete: true,
             }
         );
@@ -481,6 +521,7 @@ mod test {
                 cmd_path: vec!["conflict-builtin-longer-match-but-still-loses"],
                 remaining: vec!["child", "ha"],
                 cmd_type: CommandType::Custom,
+                possibilities: Vec::new(),
                 complete: true,
             }
         );
@@ -496,6 +537,7 @@ mod test {
                 cmd_path: vec!["conflict-custom-wins", "child"],
                 remaining: vec!["ha"],
                 cmd_type: CommandType::Custom,
+                possibilities: Vec::new(),
                 complete: true,
             }
         );
@@ -512,6 +554,7 @@ mod test {
                 cmd_path: vec!["foo", "bar"],
                 remaining: vec!["la", "la"],
                 cmd_type: CommandType::Custom,
+                possibilities: Vec::new(),
                 complete: false,
             };
 
@@ -541,6 +584,7 @@ mod test {
                 cmd_path: vec!["foo", "bar"],
                 remaining: vec![],
                 cmd_type: CommandType::Custom,
+                possibilities: Vec::new(),
                 complete: false,
             };
 
@@ -570,6 +614,13 @@ mod test {
                 cmd_path: vec![],
                 remaining: vec![],
                 cmd_type: CommandType::Custom,
+                possibilities: vec![
+                    String::from("conflict-tie"),
+                    String::from("conflict-builtin-longer-match-but-still-loses"),
+                    String::from("conflict-custom-wins"),
+                    String::from("foo-c"),
+                    String::from("grault-c"),
+                ],
                 complete: false,
             };
 
@@ -590,6 +641,7 @@ mod test {
                 cmd_path: vec![],
                 remaining: vec!["notfound", "la"],
                 cmd_type: CommandType::Custom,
+                possibilities: Vec::new(),
                 complete: false,
             };
 
@@ -610,6 +662,7 @@ mod test {
                 cmd_path: vec![],
                 remaining: vec![],
                 cmd_type: CommandType::Custom,
+                possibilities: Vec::new(),
                 complete: true,
             };
 
