@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::rc::Rc;
 
 // TODO: We should probably be using thiserror if this is going to be factored out into a library.
@@ -14,9 +15,9 @@ use crate::readline::Readline;
 
 pub struct Shell<'a, S> {
     prompt: &'a str,
-    pub(crate) cmds: CommandSet<'a, S>,
+    pub(crate) cmds: Rc<RefCell<CommandSet<'a, S>>>,
     pub(crate) builtins: Rc<CommandSet<'a, Self>>,
-    pub(crate) rl: Readline,
+    pub(crate) rl: Readline<'a, S>,
     pub(crate) parser: Parser,
     history_file: Option<&'a str>,
     state: S,
@@ -25,12 +26,14 @@ pub struct Shell<'a, S> {
 
 impl<'a> Shell<'a, ()> {
     pub fn new(prompt: &'a str) -> Shell<()> {
+        let cmds = Rc::new(RefCell::new(CommandSet::new()));
+        let builtins = Rc::new(Shell::build_builtins());
         Shell {
             prompt,
-            rl: Readline::new(),
+            rl: Readline::new(Parser::new(), cmds.clone(), builtins.clone()),
             parser: Parser::new(),
-            cmds: CommandSet::new(),
-            builtins: Rc::new(Shell::build_builtins()),
+            cmds,
+            builtins,
             history_file: None,
             state: (),
             terminate: false,
@@ -56,12 +59,14 @@ impl<'a, S> Shell<'a, S> {
     where
         S: 'a,
     {
+        let cmds = Rc::new(RefCell::new(CommandSet::new()));
+        let builtins = Rc::new(Shell::build_builtins());
         Shell {
             prompt,
-            rl: Readline::new(),
+            rl: Readline::new(Parser::new(), cmds.clone(), builtins.clone()),
             parser: Parser::new(),
-            cmds: CommandSet::new(),
-            builtins: Rc::new(Shell::build_builtins()),
+            cmds,
+            builtins,
             history_file: None,
             state,
             terminate: false,
@@ -69,11 +74,11 @@ impl<'a, S> Shell<'a, S> {
     }
 
     pub fn register(&mut self, cmd: Command<'a, S>) -> Result<()> {
-        if self.cmds.contains(cmd.name()) {
+        if self.cmds.borrow().contains(cmd.name()) {
             bail!("command '{}' already registered", cmd.name())
         }
 
-        self.cmds.add(cmd);
+        self.cmds.borrow_mut().add(cmd);
 
         Ok(())
     }
@@ -102,24 +107,23 @@ impl<'a, S> Shell<'a, S> {
             }
         };
         let args: Vec<String> = splits.map(|s| s.to_owned()).collect();
-        match self.cmds.get(potential_cmd) {
+        match self.cmds.borrow().get(potential_cmd) {
             Some(cmd) => {
                 cmd.validate_args(&args)?;
                 return cmd.execute(&mut self.state, &args);
             }
-            None => {
-                // Fallback to builtins. Then error if we got nothing.
-                let builtins_rc = self.builtins.clone();
-                match builtins_rc.get(potential_cmd) {
-                    Some(builtin) => {
-                        builtin.validate_args(&args)?;
-                        return builtin.execute(self, &args);
-                    }
-                    None => println!("Unrecognized command: '{}'", potential_cmd),
-                }
-            }
+            None => (),
         };
-        Ok(String::from(""))
+
+        // Fallback to builtins. Then error if we got nothing.
+        let builtins_rc = self.builtins.clone();
+        match builtins_rc.get(potential_cmd) {
+            Some(builtin) => {
+                builtin.validate_args(&args)?;
+                return builtin.execute(self, &args);
+            }
+            None => bail!("Unrecognized command: '{}'", potential_cmd),
+        }
     }
 
     pub fn run(&mut self) -> Result<()> {
@@ -130,7 +134,9 @@ impl<'a, S> Shell<'a, S> {
                 Ok(line) => match self.eval(&line) {
                     Ok(output) => println!("{}", output),
                     Err(err) => {
-                        let outcome = self.parser.parse(&line, &self.cmds, &self.builtins);
+                        let outcome = self
+                            .parser
+                            .parse(&line, &self.cmds.borrow(), &self.builtins);
                         if !outcome.complete {
                             println!("{}", outcome.error_msg());
                         } else {

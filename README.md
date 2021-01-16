@@ -10,7 +10,6 @@ shi is a library for crafting ***sh***ell ***i***nterfaces in Rust.
 ## What's Left
 Currently, `shi` is actually usable. The majority of remaining work involves quality of life and UX improvements, both for the shell interface itself, as well as the API. Currently, I'm using it in two personal projects of mine, which I'll be sure to link in this README when they are ready. Here's a (not comprehensive) list of things I would like to still do for `shi`:
 
-* Implement automatic auto-completion behavior for any tree of commands.
 * Force closure of quotes.
 * Code documentation (comments).
 * Upload to [crates.io](https://crates.io/) and linking to [docs.rs](https://docs.rs/).
@@ -18,6 +17,7 @@ Currently, `shi` is actually usable. The majority of remaining work involves qua
 * Add support for flags (named arguments) to commands.
 * Flesh out the help/docs of commands in `shi`.
 * Switch to using `thiserror` instead of `anyhow`, since this is not a binary.
+* Allow `help` as an argument to any command.
 
 ## Example
 This is a pretty simple example. It uses no state, and has only one level of nesting. The actual Rust code for this can be found in `./examples/simple.rs`.
@@ -45,7 +45,7 @@ fn main() -> Result<()> {
                     Command::new_leaf(BasicCommand::new("domestic-cat", |_, _| {
                         Ok(String::from("meow"))
                     })),
-                    Command::new_leaf(BasicCommand::new("tiger", |_, _| Ok(String::from("rawr")))),
+                    Command::new_leaf(BasicCommand::new("dangerous-tiger", |_, _| Ok(String::from("rawr")))),
                 ],
             ),
         ],
@@ -73,7 +73,7 @@ Normal commands
 └── felid
     ├── panther
     └── felinae
-        ├── tiger
+        ├── dangerous-tiger
         └── domestic-cat
 
 

@@ -1,7 +1,10 @@
 use std::borrow::Cow::{self, Borrowed, Owned};
+use std::cell::RefCell;
 use std::path::Path;
+use std::rc::Rc;
 
 use anyhow::Result;
+use colored::*;
 
 use rustyline::completion::{Completer, Pair};
 use rustyline::highlight::{Highlighter, MatchingBracketHighlighter};
@@ -10,19 +13,25 @@ use rustyline::validate::{self, MatchingBracketValidator, Validator};
 use rustyline::{Config, Context, Editor};
 use rustyline_derive::Helper;
 
-use colored::*;
+use crate::command_set::CommandSet;
+use crate::parser::Parser;
+use crate::shell::Shell;
 
-pub struct Readline {
-    rl: Editor<ExecHelper>,
+pub struct Readline<'a, S> {
+    rl: Editor<ExecHelper<'a, S>>,
 }
 
-impl Readline {
-    pub fn new() -> Readline {
+impl<'a, S> Readline<'a, S> {
+    pub fn new(
+        parser: Parser,
+        cmds: Rc<RefCell<CommandSet<'a, S>>>,
+        builtins: Rc<CommandSet<'a, Shell<'a, S>>>,
+    ) -> Readline<'a, S> {
         let config = Config::builder()
             .completion_type(rustyline::CompletionType::List)
             .build();
         let mut rl = Editor::with_config(config);
-        rl.set_helper(Some(ExecHelper::new()));
+        rl.set_helper(Some(ExecHelper::new(parser, cmds, builtins)));
         Readline { rl }
     }
 
@@ -36,7 +45,7 @@ impl Readline {
         Ok(())
     }
 
-    pub fn add_history_entry<S: AsRef<str> + Into<String>>(&mut self, line: S) -> bool {
+    pub fn add_history_entry<E: AsRef<str> + Into<String>>(&mut self, line: E) -> bool {
         self.rl.add_history_entry(line)
     }
 
@@ -50,18 +59,22 @@ impl Readline {
 }
 
 #[derive(Helper)]
-pub struct ExecHelper {
-    completer: ExecCompleter,
+pub struct ExecHelper<'a, S> {
+    completer: ExecCompleter<'a, S>,
     highlighter: MatchingBracketHighlighter,
     validator: MatchingBracketValidator,
     hinter: HistoryHinter,
     colored_prompt: String,
 }
 
-impl ExecHelper {
-    fn new() -> ExecHelper {
+impl<'a, S> ExecHelper<'a, S> {
+    fn new(
+        parser: Parser,
+        cmds: Rc<RefCell<CommandSet<'a, S>>>,
+        builtins: Rc<CommandSet<'a, Shell<'a, S>>>,
+    ) -> ExecHelper<'a, S> {
         ExecHelper {
-            completer: ExecCompleter::new(),
+            completer: ExecCompleter::new(parser, cmds, builtins),
             highlighter: MatchingBracketHighlighter::new(),
             validator: MatchingBracketValidator::new(),
             hinter: HistoryHinter {},
@@ -70,7 +83,7 @@ impl ExecHelper {
     }
 }
 
-impl Completer for ExecHelper {
+impl<'a, S> Completer for ExecHelper<'a, S> {
     type Candidate = Pair;
 
     fn complete(
@@ -83,7 +96,7 @@ impl Completer for ExecHelper {
     }
 }
 
-impl Hinter for ExecHelper {
+impl<'a, S> Hinter for ExecHelper<'a, S> {
     type Hint = String;
 
     fn hint(&self, line: &str, pos: usize, ctx: &Context<'_>) -> Option<String> {
@@ -93,7 +106,7 @@ impl Hinter for ExecHelper {
     }
 }
 
-impl Highlighter for ExecHelper {
+impl<'a, S> Highlighter for ExecHelper<'a, S> {
     fn highlight_prompt<'b, 's: 'b, 'p: 'b>(
         &'s self,
         prompt: &'p str,
@@ -119,7 +132,7 @@ impl Highlighter for ExecHelper {
     }
 }
 
-impl Validator for ExecHelper {
+impl<'a, S> Validator for ExecHelper<'a, S> {
     fn validate(
         &self,
         ctx: &mut validate::ValidationContext,
@@ -132,20 +145,73 @@ impl Validator for ExecHelper {
     }
 }
 
-struct ExecCompleter {}
-
-impl ExecCompleter {
-    fn new() -> ExecCompleter {
-        ExecCompleter {}
-    }
-
-    fn complete(&self, _: &str, _: usize) -> rustyline::Result<(usize, Vec<Pair>)> {
-        Ok((0, Vec::new()))
-    }
+struct ExecCompleter<'a, S> {
+    parser: Parser,
+    cmds: Rc<RefCell<CommandSet<'a, S>>>,
+    builtins: Rc<CommandSet<'a, Shell<'a, S>>>,
 }
 
-impl Default for ExecCompleter {
-    fn default() -> Self {
-        Self::new()
+impl<'a, S> ExecCompleter<'a, S> {
+    fn new(
+        parser: Parser,
+        cmds: Rc<RefCell<CommandSet<'a, S>>>,
+        builtins: Rc<CommandSet<'a, Shell<'a, S>>>,
+    ) -> ExecCompleter<'a, S> {
+        ExecCompleter {
+            parser,
+            cmds,
+            builtins,
+        }
+    }
+
+    fn complete(&self, line: &str, pos: usize) -> rustyline::Result<(usize, Vec<Pair>)> {
+        // First, let's get the slice of the line leading up to the position, because really,
+        // that's what we actually care about when trying to determine the completion.
+        let partial = match line.get(..pos) {
+            Some(p) => p,
+            None => {
+                // This shouldn't ever happen, as I believe `pos` should always be within bounds of
+                // `line`. However, it doesn't hurt to be safe.
+                return Ok((0, Vec::new()));
+            }
+        };
+
+        // Now, try parsing what the user wants us to complete.
+        let outcome = self
+            .parser
+            .parse(partial, &self.cmds.borrow(), &self.builtins);
+
+        // The outcome includes what the parser would have allowed to have existed in the string.
+        // Of these possibilities, some are better matches than others. Let's rank them as such by
+        // finding those that share the first of the remaining tokens (or empty string if empty).
+        let prefix = if let Some(first_token) = outcome.remaining.first() {
+            first_token
+        } else {
+            ""
+        };
+
+        // So now, filter out those that have that aforementioned token as a prefix. And once we
+        // have that, grab the suffix for completion.
+        let candidates = outcome.possibilities.into_iter().filter_map(|poss| {
+            if poss.starts_with(prefix) {
+                // This really should never fail to get the remaining suffix, since the condition
+                // guarantees that the prefix exists... but no harm in being safe if we can.
+                poss.get(prefix.len()..).map(|s| s.to_string())
+            } else {
+                None
+            }
+        });
+
+        // Finally, map the candidates to `Pair`'s, which is what the Completer interface wants.
+        let pairs: Vec<Pair> = candidates
+            .map(|candidate| Pair {
+                display: candidate.to_string(),
+                // Since we set our position of replacement to pos, we can just get away with
+                // returning the suffix of the candidate to append from there.
+                replacement: candidate,
+            })
+            .collect();
+
+        Ok((pos, pairs))
     }
 }

@@ -17,7 +17,7 @@ pub enum CommandType {
 #[derive(Debug, PartialEq)]
 pub struct Outcome<'a> {
     cmd_path: Vec<&'a str>,
-    remaining: Vec<&'a str>,
+    pub remaining: Vec<&'a str>,
     cmd_type: CommandType,
     pub possibilities: Vec<String>,
     pub complete: bool,
@@ -32,11 +32,11 @@ impl<'a> Outcome<'a> {
         let mut msg = String::new();
 
         if self.cmd_path.is_empty() && self.remaining.is_empty() {
-            msg += "Empty string could not be parsed as a command.\n";
+            msg += "Empty string could not be parsed as a command.";
         } else if self.cmd_path.is_empty() {
             if let Some(first_remaining_word) = self.remaining.get(0) {
                 msg.push_str(&format!(
-                    "'{}' is not a recognized command.\n",
+                    "'{}' is not a recognized command.",
                     first_remaining_word
                 ));
             } else {

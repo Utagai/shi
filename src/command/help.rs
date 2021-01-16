@@ -38,9 +38,9 @@ impl<'a, S> BaseCommand for HelpCommand<'a, S> {
 
     fn execute(&self, shell: &mut Shell<S>, _: &Vec<String>) -> Result<String> {
         let mut help_lines: Vec<String> =
-            Vec::with_capacity(shell.cmds.len() + shell.builtins.len());
+            Vec::with_capacity(shell.cmds.borrow().len() + shell.builtins.len());
         help_lines.push(String::from("Normal commands:"));
-        for cmd in &shell.cmds {
+        for cmd in shell.cmds.borrow().iter() {
             help_lines.push(format!("\t'{}' - {}", cmd.name(), cmd.help()));
         }
 

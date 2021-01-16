@@ -21,7 +21,7 @@ fn main() -> Result<()> {
                     Command::new_leaf(BasicCommand::new("domestic-cat", |_, _| {
                         Ok(String::from("meow"))
                     })),
-                    Command::new_leaf(BasicCommand::new("tiger", |_, _| Ok(String::from("rawr")))),
+                    Command::new_leaf(BasicCommand::new("dangerous-tiger", |_, _| Ok(String::from("rawr")))),
                 ],
             ),
         ],
