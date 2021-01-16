@@ -32,7 +32,7 @@ impl<'a> Outcome<'a> {
         let mut msg = String::new();
 
         if self.cmd_path.is_empty() && self.remaining.is_empty() {
-            msg.push_str("Empty string could not be parsed as a command.\n");
+            msg += "Empty string could not be parsed as a command.\n";
         } else if self.cmd_path.is_empty() {
             if let Some(first_remaining_word) = self.remaining.get(0) {
                 msg.push_str(&format!(
@@ -43,28 +43,28 @@ impl<'a> Outcome<'a> {
                 unreachable!("remaining unparsed tokens cannot be empty at this point")
             }
         } else {
-            msg.push_str("Failed to parse fully:\n");
-            msg.push_str("\n");
+            msg += "Failed to parse fully:\n";
+            msg += "\n";
 
             let valid_prefix = self.cmd_path.join(" ");
             let invalid_suffix = self.remaining.join(" ");
-            msg.push_str("\t    (spaces trimmed)\n");
+            msg += "\t    (spaces trimmed)\n";
             if self.remaining.is_empty() {
-                msg.push_str(&format!("\t => '{}  '\n", valid_prefix));
-                msg.push_str(&format!("\t     {}^\n", " ".repeat(valid_prefix.len() + 1)));
+                msg += &format!("\t => '{}  '\n", valid_prefix);
+                msg += &format!("\t     {}^\n", " ".repeat(valid_prefix.len() + 1));
             } else {
-                msg.push_str(&format!("\t => '{} {}'\n", valid_prefix, invalid_suffix));
-                msg.push_str(&format!("\t     {}^\n", " ".repeat(valid_prefix.len() + 1)));
+                msg += &format!("\t => '{} {}'\n", valid_prefix, invalid_suffix);
+                msg += &format!("\t     {}^\n", " ".repeat(valid_prefix.len() + 1));
             }
-            msg.push_str("expected a valid subcommand\n");
-            msg.push_str("instead, got: ");
+            msg += "expected a valid subcommand\n";
+            msg += "instead, got: ";
             if let Some(first_remaining_word) = self.remaining.get(0) {
-                msg.push_str(&format!("'{}';\n", first_remaining_word));
+                msg += &format!("'{}';\n", first_remaining_word);
             } else {
-                msg.push_str("nothing;\n")
+                msg += "nothing;\n"
             }
 
-            msg.push_str("\n");
+            msg += "\n";
             msg.push_str(&format!(
                 "Run '{} help' for more info on the command.",
                 valid_prefix
@@ -72,7 +72,7 @@ impl<'a> Outcome<'a> {
         }
 
         if !self.possibilities.is_empty() {
-            msg.push_str("\n\n");
+            msg += "\n\n";
             msg.push_str(&format!(
                 "\t => expected one of {}.\n",
                 self.possibilities
@@ -83,8 +83,8 @@ impl<'a> Outcome<'a> {
             ))
         }
 
-        msg.push_str("\n");
-        msg.push_str("Run 'helptree' for more info on the entire command tree.\n");
+        msg += "\n";
+        msg += "Run 'helptree' for more info on the entire command tree.\n";
 
         msg
     }
