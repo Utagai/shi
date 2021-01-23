@@ -633,7 +633,6 @@ mod test {
                 vec![
                     "Empty string could not be parsed as a command.\n",
                     "\n",
-                    "\n",
                     "\t => expected one of 'conflict-tie' or 'conflict-builtin-longer-match-but-still-loses' or 'conflict-custom-wins' or 'foo-c' or 'grault-c'.",
                     "\n",
                     "\n",
@@ -657,7 +656,6 @@ mod test {
                 outcome.error_msg(),
                 vec![
                     "'notfound' is not a recognized command.\n",
-                    "\n",
                     "Run 'helptree' for more info on the entire command tree.\n",
                 ]
                 .join(""),
