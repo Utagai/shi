@@ -101,7 +101,6 @@ impl<'a, S> Hinter for ExecHelper<'a, S> {
 
     fn hint(&self, line: &str, pos: usize, ctx: &Context<'_>) -> Option<String> {
         let hint = self.hinter.hint(line, pos, ctx);
-        // println!("Hint: {:?}", hint);
         hint
     }
 }
