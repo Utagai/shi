@@ -197,7 +197,12 @@ impl<'a, S> ExecCompleter<'a, S> {
             // If the user then tabs to get a completion, it implies that they want to add a
             // subcommand. Before we can do that, we need a space delimiter, so that should be our
             // provided completion if it does not yet exist!
-            if !partial.ends_with(" ") {
+            //
+            // ... with one gotcha. If the line is completely empty, we obviously should not expect
+            // a space. The start of the line is itself a delimiter of sorts.
+            if partial.is_empty() {
+                ""
+            } else if !partial.ends_with(" ") {
                 return Ok((
                     pos,
                     vec![Pair {
@@ -407,6 +412,41 @@ mod test {
                     display: " ".to_string(),
                     replacement: " ".to_string(),
                 }],
+            )
+        }
+
+        #[test]
+        fn nothing_typed() {
+            let completer = make_completer();
+
+            let line = "";
+
+            test_completion(
+                completer,
+                line,
+                line.len(),
+                vec![
+                    Pair {
+                        display: "conflict-builtin-longer-match-but-still-loses".to_string(),
+                        replacement: "conflict-builtin-longer-match-but-still-loses".to_string(),
+                    },
+                    Pair {
+                        display: "conflict-custom-wins".to_string(),
+                        replacement: "conflict-custom-wins".to_string(),
+                    },
+                    Pair {
+                        display: "conflict-tie".to_string(),
+                        replacement: "conflict-tie".to_string(),
+                    },
+                    Pair {
+                        display: "foo-c".to_string(),
+                        replacement: "foo-c".to_string(),
+                    },
+                    Pair {
+                        display: "grault-c".to_string(),
+                        replacement: "grault-c".to_string(),
+                    },
+                ],
             )
         }
     }
