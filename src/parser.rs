@@ -197,7 +197,7 @@ impl Parser {
 }
 
 #[cfg(test)]
-mod test {
+pub mod test {
     use super::*;
 
     use crate::command::BaseCommand;
@@ -241,7 +241,7 @@ mod test {
         }
     }
 
-    fn make_parser_cmds<'a>() -> (CommandSet<'a, ()>, CommandSet<'a, Shell<'a, ()>>) {
+    pub fn make_parser_cmds<'a>() -> (CommandSet<'a, ()>, CommandSet<'a, Shell<'a, ()>>) {
         (
             CommandSet::new_from_vec(vec![
                 Command::new_parent(

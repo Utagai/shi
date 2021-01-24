@@ -238,3 +238,177 @@ impl<'a, S> ExecCompleter<'a, S> {
         Ok((pos, pairs))
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    mod completions {
+        use super::*;
+        use crate::parser::test::make_parser_cmds;
+        use crate::parser::Parser;
+
+        use pretty_assertions::assert_eq;
+
+        fn make_completer<'a>() -> ExecCompleter<'a, ()> {
+            let (cmds, builtins) = make_parser_cmds();
+
+            // Wrap these to satisfy the type checker.
+            let cmds = Rc::new(RefCell::new(cmds));
+            let builtins = Rc::new(builtins);
+
+            ExecCompleter::new(Parser::new(), cmds, builtins)
+        }
+
+        fn test_completion<'a>(
+            completer: ExecCompleter<'a, ()>,
+            line: &str,
+            pos: usize,
+            expected_pairs: Vec<Pair>,
+        ) {
+            match completer.complete(line, pos) {
+                Ok(cmpl_res) => {
+                    let (pos, pairs) = cmpl_res;
+                    // We should always be returning a position that is the end of the line.
+                    assert_eq!(pos, line.len());
+
+                    assert_eq!(
+                        pairs.len(),
+                        expected_pairs.len(),
+                        "mismatched number of completions"
+                    );
+
+                    for (p1, p2) in pairs.iter().zip(expected_pairs.iter()) {
+                        assert_eq!(p1.display, p2.display, "non-matching display strings");
+                        assert_eq!(
+                            p1.replacement, p2.replacement,
+                            "non-matching replacement strings"
+                        );
+                    }
+                }
+                Err(err) => {
+                    panic!(format!("failed to complete '{}': {}", line, err))
+                }
+            }
+        }
+
+        #[test]
+        fn simple() {
+            let completer = make_completer();
+
+            let line = "grau";
+
+            test_completion(
+                completer,
+                line,
+                line.len(),
+                vec![Pair {
+                    display: "lt-c".to_string(),
+                    replacement: "lt-c".to_string(),
+                }],
+            )
+        }
+
+        #[test]
+        fn no_matches() {
+            let completer = make_completer();
+
+            let line = "idontexistlol";
+
+            test_completion(completer, line, line.len(), vec![])
+        }
+
+        #[test]
+        fn multiple_matches() {
+            let completer = make_completer();
+
+            let line = "conflict-";
+
+            test_completion(
+                completer,
+                line,
+                line.len(),
+                vec![
+                    Pair {
+                        display: "builtin-longer-match-but-still-loses".to_string(),
+                        replacement: "builtin-longer-match-but-still-loses".to_string(),
+                    },
+                    Pair {
+                        display: "custom-wins".to_string(),
+                        replacement: "custom-wins".to_string(),
+                    },
+                    Pair {
+                        display: "tie".to_string(),
+                        replacement: "tie".to_string(),
+                    },
+                ],
+            )
+        }
+
+        #[test]
+        fn nested() {
+            let completer = make_completer();
+
+            let line = "foo-c qu";
+
+            test_completion(
+                completer,
+                line,
+                line.len(),
+                vec![Pair {
+                    display: "x-c".to_string(),
+                    replacement: "x-c".to_string(),
+                }],
+            )
+        }
+
+        #[test]
+        fn already_completed() {
+            let completer = make_completer();
+
+            let line = "foo-c qux-c quux-c";
+
+            test_completion(completer, line, line.len(), vec![])
+        }
+
+        #[test]
+        fn completely_blank_for_last_command() {
+            let completer = make_completer();
+
+            let line = "foo-c qux-c ";
+
+            test_completion(
+                completer,
+                line,
+                line.len(),
+                vec![
+                    Pair {
+                        display: "corge-c".to_string(),
+                        replacement: "corge-c".to_string(),
+                    },
+                    Pair {
+                        display: "quux-c".to_string(),
+                        replacement: "quux-c".to_string(),
+                    },
+                ],
+            )
+        }
+
+        #[test]
+        fn completion_includes_a_space() {
+            let completer = make_completer();
+
+            let line = "foo-c qux-c";
+
+            test_completion(
+                completer,
+                line,
+                line.len(),
+                vec![Pair {
+                    display: " ".to_string(),
+                    replacement: " ".to_string(),
+                }],
+            )
+        }
+    }
+}
