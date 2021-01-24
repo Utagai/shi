@@ -272,9 +272,9 @@ mod test {
         ) {
             match completer.complete(line, pos) {
                 Ok(cmpl_res) => {
-                    let (pos, pairs) = cmpl_res;
-                    // We should always be returning a position that is the end of the line.
-                    assert_eq!(pos, line.len());
+                    let (cmpl_pos, pairs) = cmpl_res;
+                    // We should always be returning a position that is the given position.
+                    assert_eq!(cmpl_pos, pos, "mismatched positions");
 
                     assert_eq!(
                         pairs.len(),
@@ -447,6 +447,40 @@ mod test {
                         replacement: "grault-c".to_string(),
                     },
                 ],
+            )
+        }
+
+        #[test]
+        fn non_end_pos() {
+            let completer = make_completer();
+
+            let line = "grault-c";
+
+            test_completion(
+                completer,
+                line, // 'grault-c'
+                3,    //     ^
+                vec![Pair {
+                    display: "ult-c".to_string(),
+                    replacement: "ult-c".to_string(),
+                }],
+            )
+        }
+
+        #[test]
+        fn nested_non_end_pos() {
+            let completer = make_completer();
+
+            let line = "foo-c qux-c quux-c";
+
+            test_completion(
+                completer,
+                line, // 'foo-c qux-c quux-c'
+                8,    //          ^
+                vec![Pair {
+                    display: "x-c".to_string(),
+                    replacement: "x-c".to_string(),
+                }],
             )
         }
     }
