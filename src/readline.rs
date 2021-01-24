@@ -181,13 +181,36 @@ impl<'a, S> ExecCompleter<'a, S> {
             .parser
             .parse(partial, &self.cmds.borrow(), &self.builtins);
 
+        // If the parse was complete, then there is of course nothing to complete. It's...
+        // complete.
+        if outcome.complete {
+            return Ok((pos, vec![]));
+        }
+
         // The outcome includes what the parser would have allowed to have existed in the string.
         // Of these possibilities, some are better matches than others. Let's rank them as such by
         // finding those that share the first of the remaining tokens (or empty string if empty).
         let prefix = if let Some(first_token) = outcome.remaining.first() {
             first_token
         } else {
-            ""
+            // If the remaining is empty and we have an incomplete parse, that implies that the
+            // user has thus far entered something valid but there are more subcommands to provide.
+            // If the user then tabs to get a completion, it implies that they want to add a
+            // subcommand. Before we can do that, we need a space delimiter, so that should be our
+            // provided completion if it does not yet exist!
+            if !partial.ends_with(" ") {
+                return Ok((
+                    pos,
+                    vec![Pair {
+                        display: String::from(" "),
+                        replacement: String::from(" "),
+                    }],
+                ));
+            } else {
+                // Otherwise, the user already has the delimiter. So now we should provide any and
+                // all subsequent subcommands.
+                ""
+            }
         };
 
         // So now, filter out those that have that aforementioned token as a prefix. And once we
