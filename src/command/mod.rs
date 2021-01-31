@@ -12,6 +12,12 @@ pub mod help;
 pub mod helptree;
 pub mod history;
 
+pub use echo::*;
+pub use exit::*;
+pub use help::*;
+pub use helptree::*;
+pub use history::*;
+
 pub mod example {
     pub use super::echo::EchoCommand;
 }
