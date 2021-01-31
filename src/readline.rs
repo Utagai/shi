@@ -17,11 +17,13 @@ use crate::command_set::CommandSet;
 use crate::parser::Parser;
 use crate::shell::Shell;
 
+/// A wrapper around `rustyline::Editor`.
 pub struct Readline<'a, S> {
     rl: Editor<ExecHelper<'a, S>>,
 }
 
 impl<'a, S> Readline<'a, S> {
+    /// Constructs a new `Readline`.
     pub fn new(
         parser: Parser,
         cmds: Rc<RefCell<CommandSet<'a, S>>>,
@@ -35,30 +37,55 @@ impl<'a, S> Readline<'a, S> {
         Readline { rl }
     }
 
+    /// Loads the readline history from the given file.
+    ///
+    /// # Arguments
+    /// `path` - The path to the history file to load history from.
     pub fn load_history<P: AsRef<Path> + ?Sized>(&mut self, path: &P) -> Result<()> {
         self.rl.load_history(path)?;
         Ok(())
     }
 
+    /// Saves the history to the given file.
+    ///
+    /// # Arguments
+    /// `path` - The path at which to save the history.
     pub fn save_history<P: AsRef<Path> + ?Sized>(&mut self, path: &P) -> Result<()> {
         self.rl.save_history(path)?;
         Ok(())
     }
 
+    /// Adds a history entry to the history. This is done in memory. Persistence is achieved via
+    /// `save_history()`.
     pub fn add_history_entry<E: AsRef<str> + Into<String>>(&mut self, line: E) -> bool {
         self.rl.add_history_entry(line)
     }
 
+    /// Reads a line via the given prompt.
+    ///
+    /// # Arguments
+    /// `prompt` - The prompt to display to the user.
     pub fn readline(&mut self, prompt: &str) -> rustyline::Result<String> {
         self.rl.readline(prompt)
     }
 
+    /// Returns the readline `History`.
+    ///
+    /// Repeated, subsequent commands are not duplicated in the history.
+    /// Invalid command invocations _are_ included in the history.
+    /// May only be the commands executed in the current session, or it may also include prior
+    /// sessions. This is dependent on whether `load_history()` was called for prior session
+    /// histories.
+    ///
+    /// # Returns
+    /// `rustyline::history::History` - The history of invoked commands.
     pub fn history(&self) -> &rustyline::history::History {
         self.rl.history()
     }
 }
 
 #[derive(Helper)]
+/// An ExecHelper for supporting various `rustyline` features.
 pub struct ExecHelper<'a, S> {
     completer: ExecCompleter<'a, S>,
     highlighter: MatchingBracketHighlighter,
@@ -68,6 +95,7 @@ pub struct ExecHelper<'a, S> {
 }
 
 impl<'a, S> ExecHelper<'a, S> {
+    /// Constructs an `ExecHelper`.
     fn new(
         parser: Parser,
         cmds: Rc<RefCell<CommandSet<'a, S>>>,
@@ -144,6 +172,7 @@ impl<'a, S> Validator for ExecHelper<'a, S> {
     }
 }
 
+/// ExecCompleter enables command completion in the shell.
 struct ExecCompleter<'a, S> {
     parser: Parser,
     cmds: Rc<RefCell<CommandSet<'a, S>>>,
@@ -151,6 +180,12 @@ struct ExecCompleter<'a, S> {
 }
 
 impl<'a, S> ExecCompleter<'a, S> {
+    /// Constructs a new `ExecCompleter`.
+    ///
+    /// # Arguments
+    /// `parser` - The parser to use for command completion.
+    /// `cmds` - The custom commands to complete for.
+    /// `builtins` - The builtins to complete for.
     fn new(
         parser: Parser,
         cmds: Rc<RefCell<CommandSet<'a, S>>>,
@@ -163,6 +198,26 @@ impl<'a, S> ExecCompleter<'a, S> {
         }
     }
 
+    /// Offers completion candidates for a line.
+    ///
+    /// Tries to mimic to some degree, the completion behavior in bash shells.
+    ///
+    /// In particular, this means that `pos` values that are not at the end of the line behave as
+    /// if the portion of the line prior to it is the entirety of the line. e.g.:
+    ///
+    /// ```bash
+    /// $ happ|iness
+    ///       ^ Assuming this is the cursor position...
+    /// $ happinessiness # Is the completion result.
+    /// ```
+    ///
+    /// # Arguments
+    /// `line` - The line to try offering completion candidates for.
+    /// `pos` - The position of the cursor on that line.
+    ///
+    /// # Returns
+    /// `rustyline::Result<(usize, Vec<Pair>)>` - A result of a position & completion results to
+    /// present.
     fn complete(&self, line: &str, pos: usize) -> rustyline::Result<(usize, Vec<Pair>)> {
         // First, let's get the slice of the line leading up to the position, because really,
         // that's what we actually care about when trying to determine the completion.
@@ -203,6 +258,8 @@ impl<'a, S> ExecCompleter<'a, S> {
             if partial.is_empty() {
                 ""
             } else if !partial.ends_with(" ") {
+                // As said before, complete this as a space so that the next attempt at tab
+                // completion gives the results the user likely actually wanted to see.
                 return Ok((
                     pos,
                     vec![Pair {

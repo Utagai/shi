@@ -5,12 +5,15 @@ use anyhow::{bail, Result};
 use super::BaseCommand;
 use crate::shell::Shell;
 
+// TODO: This should be private.
 #[derive(Debug)]
+/// ExitCommand is a command that triggers a termination of the shell.
 pub struct ExitCommand<'a, S> {
     phantom: &'a PhantomData<S>,
 }
 
 impl<'a, S> ExitCommand<'a, S> {
+    /// Creates a new ExitCommand.
     pub fn new() -> ExitCommand<'a, S> {
         ExitCommand {
             phantom: &PhantomData,

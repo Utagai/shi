@@ -2,19 +2,21 @@ use std::collections::{hash_map::Iter, HashMap};
 
 use crate::command::{BaseCommand, Command};
 
-/// A wrapper data structure that offers retrieval, insertion, contains and len methods, specifically
-/// for Commands.
+/// A wrapper data structure that offers several basic container methods, specifically for
+/// Commands.
 pub struct CommandSet<'a, S> {
     cmds: HashMap<String, Box<Command<'a, S>>>,
 }
 
 impl<'a, S> CommandSet<'a, S> {
+    /// Creates a new, empty `CommandSet`.
     pub fn new() -> Self {
         CommandSet {
             cmds: HashMap::new(),
         }
     }
 
+    /// Creates a new `CommandSet` from the given `Vector` of `Command`'s.
     pub fn new_from_vec(cmds: Vec<Command<'a, S>>) -> Self {
         let mut cmd_set = CommandSet::new();
         for cmd in cmds {
@@ -26,23 +28,50 @@ impl<'a, S> CommandSet<'a, S> {
 }
 
 impl<'a, S> CommandSet<'a, S> {
+    /// Retrieves the command, if one exists, for the given name.
+    ///
+    /// # Arguments
+    /// `name` - The name of the command to retrieve.
+    ///
+    /// # Returns
+    /// `Option<&Box<Command>>` - The command with the name requested, or None if it was not found.
     pub fn get(&self, name: &str) -> Option<&Box<Command<'a, S>>> {
         self.cmds.get(name)
     }
 
+    /// Adds the given command to the set.
+    ///
+    /// # Arguments
+    /// `cmd` - The command to add to this set.
     pub fn add(&mut self, cmd: Command<'a, S>) {
         self.cmds.insert(cmd.name().to_owned(), Box::new(cmd));
     }
 
+    /// Tests for existence of a `Command` with the given `name`.
+    ///
+    /// # Arguments
+    /// `name` - The name to look for in this `CommandSet`.
+    ///
+    /// # Returns
+    /// `bool` - Whether or not a `Command` with the given `name` exists in this set.
     pub fn contains(&self, name: &str) -> bool {
         self.cmds.contains_key(name)
     }
 
+    /// Returns the length of this `CommandSet`.
+    ///
+    /// # Returns
+    /// `usize` - The length of this `CommandSet`.
     pub fn len(&self) -> usize {
         self.cmds.len()
     }
 
-    /// Returns a vector of all the command names of this command set, at the topmost/root level.
+    /// Retrievse the command names of this command set.
+    /// Note that this only includes the names at the topmost/root level, it does not potentially
+    /// recurse into parent commands and flatten the hierarchy
+    ///
+    /// # Returns
+    /// `Vec<String>` - The top-level `Command` names.
     pub fn names(&self) -> Vec<String> {
         let mut names_vec: Vec<String> = self.iter().map(|cmd| cmd.name().to_string()).collect();
         // Since we are really just a map under the hood, we have no guaranteed ordering. This
@@ -51,6 +80,10 @@ impl<'a, S> CommandSet<'a, S> {
         return names_vec;
     }
 
+    /// Produces an iterator over this set.
+    ///
+    /// # Returns
+    /// `CommandSetIterator` - An iterator over this `CommandSet`.
     pub fn iter(&self) -> CommandSetIterator<S> {
         CommandSetIterator {
             iter: self.cmds.iter(),
@@ -58,6 +91,7 @@ impl<'a, S> CommandSet<'a, S> {
     }
 }
 
+/// An iterator for `CommandSet`'s.
 pub struct CommandSetIterator<'a, S> {
     iter: Iter<'a, String, Box<Command<'a, S>>>,
 }

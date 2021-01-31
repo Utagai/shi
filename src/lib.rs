@@ -1,3 +1,7 @@
+//! A crate for building shell interfaces in Rust.
+//!
+//! See the README.md and examples for more information.
+
 pub mod command;
 mod command_set;
 mod parser;
@@ -47,7 +51,7 @@ mod test {
 
         let mut shell = Shell::new_with_state("| ", lst);
 
-        shell.set_history_file("readline_history.txt")?;
+        shell.set_and_load_history_file("readline_history.txt")?;
         shell.register(Command::new_leaf(EchoCommand::new()))?;
         shell.register(Command::new_leaf(BasicCommand::new("remove", |_, _| {
             Ok(String::from("I AM REMOVE CLOSURE!!!"))

@@ -1,22 +1,30 @@
-// Preprocesses the string into a vector of &str tokens for the Parser. Effectively a tokenizer,
-// but it doesn't actually really emit a variety of tokens, but serves a similar purpose to a
-// tokenizer.
-// Handles things like splitting by space, acknowledging quotation marks, etc.
+/// Tokenizers pre-process the string into a vector of &str tokens for a parser. Effectively a
+/// tokenizer, but it doesn't necessarily emit a variety of tokens, but serves a purpose similar to
+/// a tokenizer, or I suppose, at least a scanner?
 pub trait Tokenizer {
     fn tokenize<'a>(&self, line: &'a str) -> Vec<&'a str>;
 }
 
+/// DefaultTokenizer tokenizes an input string into tokens based on some default, basic rules.
+///
+/// Handles things like splitting by space, acknowledging quotation marks, etc.
 pub struct DefaultTokenizer {
     quotations: Vec<char>,
 }
 
 #[derive(Debug, PartialEq)]
+/// Describes the position of a quotation mark.
+///
+/// Quotation marks are generally either `"` or `'`, but can be any character.
 struct QuoteLoc {
     pos: usize,
     quotation: char,
 }
 
 #[derive(Debug)]
+/// Describes a pair of quotes.
+///
+/// Quotation marks are generally either `"` or `'`, but can be any character.
 struct QuotePair {
     start: usize,
     end: usize,
@@ -24,6 +32,11 @@ struct QuotePair {
 }
 
 #[derive(Debug, PartialEq)]
+/// Describes a 'blob' of the input string.
+///
+/// A 'blob' can be thought of as a chunk or portion of the string. It can be defined as quoted
+/// chunks of the string, or non-quoted chunks, with no other cases. Blobs are contiguous and thus
+/// do not overlap.
 enum Blob<'a> {
     Normal(&'a str),
     Quoted(&'a str),
@@ -44,11 +57,22 @@ impl<'a> Blob<'a> {
 }
 
 impl DefaultTokenizer {
+    /// Constructs a `DefaultTokenizer`.
     pub fn new(quotations: Vec<char>) -> DefaultTokenizer {
         DefaultTokenizer { quotations }
     }
 
     /// Finds quotes in the line string, and returns them.
+    ///
+    /// This method does not have any intelligence around pairing of quotation marks, it simply
+    /// finds and returns the ones it sees.
+    ///
+    /// # Arguments
+    /// `line` - The input line.
+    ///
+    /// # Returns
+    /// `Vec<QuoteLoc>` - A listing of all the quotation marks. Pairs represent two elements in
+    /// this listing.
     fn find_quotes(&self, line: &str) -> Vec<QuoteLoc> {
         let mut quote_locs: Vec<QuoteLoc> = Vec::new();
 
@@ -65,13 +89,36 @@ impl DefaultTokenizer {
     }
 
     /// Finds pairings of balanced quotes in the string, given a series of quote locations.
+    ///
+    /// This method is the intelligent sibling of `find_quotes()`. It takes the `QuoteLoc`'s
+    /// returned by `find_quotes()` and pairs together the `QuoteLoc`'s into `QuotePair`'s.
+    ///
+    /// # Arguments
+    /// `quote_locs` - The quote locations as returned by `find_quotes()`.
+    ///
+    /// # Returns
+    /// `Vec<QuotePair>` - The paired couples of quotes based on the given quote locations.
     fn find_quote_pairs(&self, quote_locs: Vec<QuoteLoc>) -> Vec<QuotePair> {
         let mut quote_pairs: Vec<QuotePair> = Vec::new();
         let mut start_idx = 0;
         let mut next_idx = None;
+
+        // The algorithm here is that we will go through each of the quote locations, and for each
+        // of them, we will iterate the rest of the quote locations until we find a matching
+        // quotation character, upon which we will discard any quotations in between (since they
+        // are actually contained within the outer quotes), and add this pair.
+        //
+        // Then beginning from after the second QuoteLoc of the pair, we repeat until we've
+        // exhausted all the QuoteLocs.
         while start_idx < quote_locs.len() {
+            // This .unwrap() is safe, because of the while condition.
             let start = quote_locs.get(start_idx).unwrap();
             for i in start_idx + 1..quote_locs.len() {
+                // This .unwrap() is safe, because of the for loops range being upper bounded by
+                // quote_locs.len() exclusively. For the lower bound, we know that start_idx+1 is
+                // within bounds, because of the outer while condition. If adding 1 brings it to
+                // quote_locs.len(), that would exceed the for range and this code would not be
+                // executed.
                 let current = quote_locs.get(i).unwrap();
 
                 if current.quotation == start.quotation {
@@ -100,7 +147,16 @@ impl DefaultTokenizer {
         quote_pairs
     }
 
-    /// Creates slices into the original line slice based on the given quote pairs.
+    /// Creates blobs from the original line based on the given quote pairs.
+    ///
+    /// This function essentially breaks apart the line into quoted and non-quoted pieces.
+    ///
+    /// # Arguments
+    /// `line` - The input line.
+    /// `pairs` - The listing of quote pairs.
+    ///
+    /// # Returns
+    /// `Vec<Blob>` - The listing of quoted & non-quoted blobs of the input line.
     fn construct_slices_from_pairs<'a>(
         &self,
         line: &'a str,
@@ -111,13 +167,21 @@ impl DefaultTokenizer {
         let mut cur = 0;
         // Now we have the pairs. Get the slices.
         for pair in pairs.iter() {
+            // If the current position does not match the pair.start, that means that the region of
+            // the input from cur to pair.start is itself a blob, and it's unquoted. Let's make
+            // sure we don't forget that.
             if cur != pair.start {
                 blobs.push(Blob::Normal(&line[cur..pair.start]));
             }
+
+            // Of course, the quote pair describes a blob by its region in the line.
             blobs.push(Blob::Quoted(&line[pair.start..pair.end + 1]));
             cur = pair.end + 1;
         }
 
+        // If a quote pair does not end at the end of a line (aka, the second quotation character
+        // in the pair is not the last character of the line), then that means there is an extra
+        // unquoted blob at the end of the line that we forgot about. Let's remember that here.
         if let Some(quote_pair) = pairs.last() {
             if quote_pair.end + 1 != line.len() {
                 blobs.push(Blob::Normal(&line[quote_pair.end + 1..]));
@@ -127,11 +191,17 @@ impl DefaultTokenizer {
         return blobs;
     }
 
-    /// Globs together parts of the string that are surrounded by quotation marks.
+    /// Globs together parts of the string that are surrounded by quotation marks, and returns a
+    /// series of blobs of the input line based on it.
     ///
     /// In practice for shi, this refers to ASCII " and ', but it is written generally for any set
-    /// of quotation characters. I expect I may need to increase that list, maybe. Or extend this to
-    /// be customizable by users.
+    /// of quotation characters.
+    ///
+    /// # Arguments
+    /// `line` - The input line.
+    ///
+    /// # Returns
+    /// `Vec<Blob>` - The listing of quoted & non-quoted blobs of the input line.
     fn split_into_quote_blobs<'a>(&self, line: &'a str) -> Vec<Blob<'a>> {
         // This is not a particularly fast algorithm. But it doesn't need to be. Instead, we opt
         // for clarity.
@@ -151,8 +221,16 @@ impl DefaultTokenizer {
         self.construct_slices_from_pairs(line, quote_pairs)
     }
 
-    /// Splits the given blobs by spaces, so long as the blob is not a quoted blob, and returns the
-    /// flattened vector of splits.
+    /// Splits the given blobs by spaces, and returns the flattened vector of splits.
+    ///
+    /// The key thing to note here is that a _quoted_ blob is not split, and maintained.
+    /// Whereas non-quoted blobs are split by space.
+    ///
+    /// # Arguments
+    /// `line_blobs` - The blobs of an input line.
+    ///
+    /// # Returns
+    /// `Vec<&str>` - A series of slices into an input line that represent its component tokens.
     fn split_by_space<'a>(&self, line_blobs: Vec<Blob<'a>>) -> Vec<&'a str> {
         let mut splitted_parts: Vec<&str> = Vec::new();
         for blob in line_blobs {
@@ -197,6 +275,16 @@ fn test_find_quotes() {
 }
 
 impl Tokenizer for DefaultTokenizer {
+    /// Tokenizes the given input line into its constituent components.
+    ///
+    /// In particular, this preserves quoted strings and does not split inside of them, but
+    /// outside, splits them, by space.
+    ///
+    /// # Arguments
+    /// `line` - The input line.
+    ///
+    /// # Returns
+    /// `Vec<&str>` - A series of slices into an input line that represent its component tokens.
     fn tokenize<'a>(&self, line: &'a str) -> Vec<&'a str> {
         let line_bits_with_quotes_globbed = self.split_into_quote_blobs(line);
 

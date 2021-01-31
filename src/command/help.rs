@@ -6,12 +6,18 @@ use super::BaseCommand;
 use crate::shell::Shell;
 
 #[derive(Debug)]
+/// HelpCommand is a command for printing out a listing of all available commands and builtins.
+///
+/// It displays two separated sections, one for custom commands and one for builtins.
+/// It assumes that all commands it prints have meaningful implementations of Help(), as it
+/// includes it in the output.
 pub struct HelpCommand<'a, S> {
     // TODO: Not sure if we need this crap.
     phantom: &'a PhantomData<S>,
 }
 
 impl<'a, S> HelpCommand<'a, S> {
+    /// Creates a new HelpCommand.
     pub fn new() -> HelpCommand<'a, S> {
         HelpCommand {
             phantom: &PhantomData,
@@ -37,8 +43,9 @@ impl<'a, S> BaseCommand for HelpCommand<'a, S> {
     }
 
     fn execute(&self, shell: &mut Shell<S>, _: &Vec<String>) -> Result<String> {
+        // We expect there to be one line per command, +2 commands for headers of the two sections.
         let mut help_lines: Vec<String> =
-            Vec::with_capacity(shell.cmds.borrow().len() + shell.builtins.len());
+            Vec::with_capacity(shell.cmds.borrow().len() + shell.builtins.len() + 2);
         help_lines.push(String::from("Normal commands:"));
         for cmd in shell.cmds.borrow().iter() {
             help_lines.push(format!("\t'{}' - {}", cmd.name(), cmd.help()));

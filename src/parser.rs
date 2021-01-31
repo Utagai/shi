@@ -3,11 +3,15 @@ use crate::command_set::CommandSet;
 use crate::shell::Shell;
 use crate::tokenizer::{DefaultTokenizer, Tokenizer};
 
+/// A parser that parses input lines into `Command` invocations.
 pub struct Parser {
     tokenizer: DefaultTokenizer,
 }
 
 #[derive(Debug, PartialEq)]
+/// CommandType represents part of a parse result. A parse attempt for a command will result in a
+/// decision on whether a given input line represents a `Builtin` command, a `Custom` command, or
+/// `Unknown`, in the case of an unsuccessful or incomplete parse.
 pub enum CommandType {
     Builtin,
     Custom,
@@ -15,6 +19,18 @@ pub enum CommandType {
 }
 
 #[derive(Debug, PartialEq)]
+/// Outcome is the final result of a parse attempt. It includes various useful bits of information
+/// from the parse:
+///
+/// * `cmd_path` - The components of the command invocation. In particular, it shows the chain of
+/// ancestry in terms of `Parent` commands and the eventual `Leaf` command.
+/// * `remaining` - The remaining components of the string. In the case of a successful parse, this
+/// represents the arguments passed to the command. In the case of unsuccessful ir incomplete
+/// parses, this represents the part of the input string that was not able to be parsed.
+/// * `cmd_type` - The type of the command. See `CommandType`.
+/// * `possibilities` - Includes the potential candidates that the parser is expecting to see
+/// following the input line. Of course, in successful/complete parses, this is empty.
+/// * `complete` - A flag denoting whether we had a successful and complete parse.
 pub struct Outcome<'a> {
     cmd_path: Vec<&'a str>,
     pub remaining: Vec<&'a str>,
@@ -24,22 +40,35 @@ pub struct Outcome<'a> {
 }
 
 impl<'a> Outcome<'a> {
+    /// Prints an error message for the `Outcome`. Of course, if the `Outcome` was complete, the
+    /// error message is empty.
     pub fn error_msg(&self) -> String {
+        // TODO: We should split apart this function.
+
+        // If we parsed successfully, we obviously shouldn't produce an error message.
         if self.complete {
             return String::from("");
         }
 
+        // This will be our String buffer.
         let mut msg = String::new();
 
         if self.cmd_path.is_empty() && self.remaining.is_empty() {
+            // In this case, we must have found an empty string, which is obviously not parseable
+            // as a command.
             msg += "Empty string could not be parsed as a command.";
         } else if self.cmd_path.is_empty() {
+            // If the `cmd_path` is empty, this implies we immediately failed the parse, and it was
+            // not at least partially complete. This then implies that the first element of the
+            // remaining components must be the thing we failed to parse as a recognized command.
             if let Some(first_remaining_word) = self.remaining.get(0) {
                 msg.push_str(&format!(
                     "'{}' is not a recognized command.",
                     first_remaining_word
                 ));
             } else {
+                // This should not be possible. If the remaining tokens were empty, then the prior
+                // if case should have caught it.
                 unreachable!("remaining unparsed tokens cannot be empty at this point")
             }
         } else {
@@ -56,6 +85,7 @@ impl<'a> Outcome<'a> {
                 msg += &format!("\t => '{} {}'\n", valid_prefix, invalid_suffix);
                 msg += &format!("\t     {}^\n", " ".repeat(valid_prefix.len() + 1));
             }
+
             msg += "expected a valid subcommand\n";
             msg += "instead, got: ";
             if let Some(first_remaining_word) = self.remaining.get(0) {
@@ -91,12 +121,22 @@ impl<'a> Outcome<'a> {
 }
 
 impl Parser {
+    /// Constructs a new Parser.
     pub fn new() -> Parser {
         Parser {
             tokenizer: DefaultTokenizer::new(vec!['\'', '"']),
         }
     }
 
+    /// Parses a given Vector of tokens into a parse `Outcome`.
+    ///
+    /// # Arguments
+    /// `tokens` - The tokens produced from an input line.
+    /// `cmd_type` - The type of command contained in `set`. See `CommandType`.
+    /// `set` - The available commands to parse into.
+    ///
+    /// # Returns
+    /// `Outcome` - The parse outcome, given the arguments.
     fn parse_tokens_with_set<'a, T>(
         &self,
         tokens: &Vec<&'a str>,
@@ -166,6 +206,15 @@ impl Parser {
         }
     }
 
+    /// Parses a given Vector of tokens into a parse `Outcome`.
+    ///
+    /// # Arguments
+    /// `tokens` - The tokens produced from an input line.
+    /// `cmds` - The available custom commands to parse into.
+    /// `builtins` - The available builtins to parse into.
+    ///
+    /// # Returns
+    /// `Outcome` - The parse outcome, given the arguments.
     fn parse_tokens<'a, S>(
         &self,
         tokens: &Vec<&'a str>,
@@ -185,6 +234,15 @@ impl Parser {
         return cmd_outcome;
     }
 
+    /// Parses the given information into a parse `Outcome`.
+    ///
+    /// # Arguments
+    /// `line` - The input line.
+    /// `cmds` - The available custom commands to parse into.
+    /// `builtins` - The available builtins to parse into.
+    ///
+    /// # Returns
+    /// `Outcome` - The parse outcome, given the arguments.
     pub fn parse<'a, S>(
         &self,
         line: &'a str,
