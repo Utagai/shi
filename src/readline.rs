@@ -66,7 +66,19 @@ impl<'a, S> Readline<'a, S> {
     /// # Arguments
     /// `prompt` - The prompt to display to the user.
     pub fn readline(&mut self, prompt: &str) -> rustyline::Result<String> {
-        self.rl.readline(prompt)
+        let mut input = self.rl.readline(prompt)?;
+        // This due to the multi line validation in the ExecValidator. We need to remove the
+        // newline in multiline input, as well as, and more importantly, the slash that denotes
+        // multi-line input for the feature to be useful (otherwise any command taking multi-line
+        // input will likely fail since a random slash would be in its argument).
+        //
+        // NOTE: This isn't actually great... if someone genuinely put this into their input string
+        // we're gonna remove it... I'm not really happy about it, but I'm going to optimistically
+        // assume this won't happen, at least not for a long time, and I'll fix it when it becomes
+        // a problem.
+        input = input.replace("\\\n", "");
+
+        Ok(input)
     }
 
     /// Returns the readline `History`.
@@ -264,10 +276,13 @@ impl ExecValidator {
     // bash does simply cause we assume that's what users are most familiar with and therefore
     // expect from us. However, bash, in this case, will actually _not_ include the newline when
     // you go to the next line, and also removes the slash.
+    //
     // We don't... that's actually really bad. It makes it virtually useless.
-    // Which is why... we remove it later. But I'm not happy about this whatsoever, because ideally
-    // that removal should happen closer to the validation... not much we can do about it though,
-    // since rustyline doesn't make the input line mutable here.
+    // ...Which is why we remove it later (see Readline::readline()). But I'm not happy about this
+    // whatsoever, because ideally that removal should happen here, in the validator... not much we
+    // can do about it though, since rustyline doesn't make the input line mutable here. Plus, what
+    // we can do in Readline::readline() is limited (see the comment in that function on a
+    // drawback).
     fn validate_multiline(&self, cur_input: &str) -> rustyline::Result<validate::ValidationResult> {
         if let Some('\\') = cur_input.chars().last() {
             return Ok(validate::ValidationResult::Incomplete);
