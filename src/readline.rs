@@ -89,7 +89,7 @@ impl<'a, S> Readline<'a, S> {
 pub struct ExecHelper<'a, S> {
     completer: ExecCompleter<'a, S>,
     highlighter: MatchingBracketHighlighter,
-    validator: MatchingBracketValidator,
+    validator: ExecValidator,
     hinter: HistoryHinter,
     colored_prompt: String,
 }
@@ -104,7 +104,7 @@ impl<'a, S> ExecHelper<'a, S> {
         ExecHelper {
             completer: ExecCompleter::new(parser, cmds, builtins),
             highlighter: MatchingBracketHighlighter::new(),
-            validator: MatchingBracketValidator::new(),
+            validator: ExecValidator::new(),
             hinter: HistoryHinter {},
             colored_prompt: "| ".to_string(),
         }
@@ -169,6 +169,111 @@ impl<'a, S> Validator for ExecHelper<'a, S> {
 
     fn validate_while_typing(&self) -> bool {
         self.validator.validate_while_typing()
+    }
+}
+
+// TODO: We should probably rename this. The 'Exec' prefix is meaningless I think.
+struct ExecValidator {
+    brackets: MatchingBracketValidator,
+}
+
+impl ExecValidator {
+    fn new() -> ExecValidator {
+        ExecValidator {
+            brackets: MatchingBracketValidator::new(),
+        }
+    }
+
+    fn is_currently_in_quote(&self, input: &str) -> bool {
+        let input_iter = input.chars();
+
+        let mut escaped = false;
+        let mut currently_in_quote = false;
+        let mut current_quote = ' ';
+
+        // Walk through the string. There are three distinct classes of possibilities:
+        // 1. We meet a quote.
+        // In this case, what we do depends on if we've seen an unmatched quote character.
+        // If we have, then this closes the quotation block, so we are _not_ in quote.
+        // If not, then that means this starts a quotation block that hasn't been closed, which
+        // would mean we _are_ in quote.
+        // If this quote is escaped, then treat it identically to case 3 and ignore it, continuing
+        // to the next character.
+        //
+        // 2. We meet a slash.
+        // This implies escaping. Everytime we see a slash, we toggle the escaped flag. This way, a
+        // single slash, '\', makes us ready to escape the next character. Two slashes, '\\', makes
+        // us treat the next character normally. Three, '\\\', makes us escape the next character.
+        // So on, so forth. The escape flag is toggled off if we meet a character that is not
+        // slash.
+        //
+        // 3. Neither of the above. Continue to the next character.
+        //
+        //
+        // NOTE: The algorithm above only considers a quotation block closed if it finds a
+        // quotation character of the _same kind_. Therefore, the string: "hello world' is _not_
+        // closed!
+        // NOTE: A quotation character of a different class is ignored as if it was escaped if it
+        // is contained between quote characters of the other class. e.g. "'" is valid, even though
+        // `'` (single-quote character) is not technically balanced..
+        for ch in input_iter {
+            if ch == '\\' {
+                escaped = !escaped;
+                continue;
+            }
+
+            let is_quote = ch == '\"' || ch == '\'';
+            if is_quote && !escaped {
+                if currently_in_quote && ch == current_quote {
+                    // This implies we just closed a quotation block.
+                    // Hence we are no longer in quotes:
+                    currently_in_quote = false;
+                    // And the current quote is back to non-quote:
+                    current_quote = ' ';
+                } else if currently_in_quote && ch != current_quote {
+                    // We found another quote character, but it doesn't match the quote we're
+                    // currently in scope for, so ignore it:
+                    continue;
+                } else {
+                    // We're not in a quote, but we found a quote character.
+                    // Therefore, we just entered a quotation block:
+                    currently_in_quote = true;
+                    current_quote = ch;
+                }
+            }
+
+            // Regardless of what happens, we just saw a character that is not a slash. So we
+            // are not escaped anymore.
+            escaped = false;
+        }
+
+        currently_in_quote
+    }
+
+    fn validate_quotes(&self, cur_input: &str) -> rustyline::Result<validate::ValidationResult> {
+        if self.is_currently_in_quote(cur_input) {
+            return Ok(validate::ValidationResult::Incomplete);
+        }
+
+        Ok(validate::ValidationResult::Valid(None))
+    }
+}
+
+impl Validator for ExecValidator {
+    fn validate(
+        &self,
+        ctx: &mut validate::ValidationContext,
+    ) -> rustyline::Result<validate::ValidationResult> {
+        match self.brackets.validate(ctx)? {
+            validate::ValidationResult::Valid(_) => (),
+            validation_res => return Ok(validation_res),
+        };
+
+        self.validate_quotes(ctx.input())
+    }
+
+    fn validate_while_typing(&self) -> bool {
+        self.brackets.validate_while_typing()
     }
 }
 
@@ -539,6 +644,121 @@ mod test {
                     replacement: "x-c".to_string(),
                 }],
             )
+        }
+    }
+
+    mod validator {
+        use super::*;
+
+        #[derive(Debug, PartialEq)]
+        enum TestValidationResult {
+            Valid,
+            Invalid,
+            Incomplete,
+        }
+
+        impl From<validate::ValidationResult> for TestValidationResult {
+            fn from(res: validate::ValidationResult) -> Self {
+                match res {
+                    validate::ValidationResult::Valid(_) => TestValidationResult::Valid,
+                    validate::ValidationResult::Invalid(_) => TestValidationResult::Invalid,
+                    validate::ValidationResult::Incomplete => TestValidationResult::Incomplete,
+                    // ValidationResult is marked as #[non_exhaustive], so we need to do this. We
+                    // _want_ to panic, because if Rustyline adds a new case, we'd like to know about
+                    // it via a test failure.
+                    _ => panic!("unexpected ValidationResult kind"),
+                }
+            }
+        }
+
+        fn validation_res_eq(a: validate::ValidationResult, b: validate::ValidationResult) {
+            assert_eq!(TestValidationResult::from(a), TestValidationResult::from(b));
+        }
+
+        fn test_validation(input: &str, expected_validity: validate::ValidationResult) {
+            let validator = ExecValidator::new();
+
+            let validation_res = validator.validate_quotes(input);
+            match validation_res {
+                Ok(validation_res) => {
+                    validation_res_eq(validation_res, expected_validity);
+                }
+                Err(err) => {
+                    panic!("did not expect an error during validation: {}", err);
+                }
+            }
+        }
+
+        #[test]
+        fn one_single_quote() {
+            test_validation("\'", validate::ValidationResult::Incomplete);
+        }
+
+        #[test]
+        fn one_double_quote() {
+            test_validation("\"", validate::ValidationResult::Incomplete);
+        }
+
+        #[test]
+        fn balanced_single() {
+            test_validation("\'\'", validate::ValidationResult::Valid(None));
+        }
+
+        #[test]
+        fn balanced_double() {
+            test_validation("\"\"", validate::ValidationResult::Valid(None));
+        }
+
+        #[test]
+        fn unbalanced_but_escaped_is_ok() {
+            test_validation("\\'", validate::ValidationResult::Valid(None));
+        }
+
+        #[test]
+        fn balanced_but_mismatched_quote_types_is_incomplete() {
+            test_validation("\'\"", validate::ValidationResult::Incomplete);
+        }
+
+        #[test]
+        fn nested_quotes_unbalanced_still_incomplete() {
+            test_validation("\'\"\'\"\'", validate::ValidationResult::Incomplete);
+        }
+
+        #[test]
+        fn overlapping_but_balanced_quotes_is_incomplete() {
+            test_validation("\' \" \' \"", validate::ValidationResult::Incomplete);
+        }
+
+        #[test]
+        fn multiple_escapes_valid() {
+            // This is actually the literal string `\\\'`, meaning the last quote is escaped and
+            // therefore valid.
+            test_validation("\\\\\\'", validate::ValidationResult::Valid(None));
+        }
+
+        #[test]
+        fn multiple_escapes_incomplete() {
+            // This is actually the literal string `\\\\'`, meaning the last quote is unescaped and
+            // therefore incomplete.
+            test_validation("\\\\\\\\'", validate::ValidationResult::Incomplete);
+        }
+
+        #[test]
+        fn closed_quote_block_with_unmatched_quote_inside_is_valid() {
+            test_validation("\"'\"", validate::ValidationResult::Valid(None));
+        }
+
+        #[test]
+        fn many_quoted_blocks() {
+            test_validation(
+                "\'hey how are you?\' \"im doing ok\" \'please thank me for asking\'",
+                validate::ValidationResult::Valid(None),
+            );
+
+            test_validation(
+                "'hey how are you?' \"im doing ok\" \\\\'please thank me for asking'",
+                validate::ValidationResult::Valid(None),
+            );
         }
     }
 }

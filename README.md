@@ -10,7 +10,6 @@ shi is a library for crafting ***sh***ell ***i***nterfaces in Rust.
 ## What's Left
 Currently, `shi` is actually usable. The majority of remaining work involves quality of life and UX improvements, both for the shell interface itself, as well as the API. Currently, I'm using it in two personal projects of mine, which I'll be sure to link in this README when they are ready. Here's a (not comprehensive) list of things I would like to still do for `shi`:
 
-* Force closure of quotes.
 * Upload to [crates.io](https://crates.io/) and linking to [docs.rs](https://docs.rs/).
 * Implement multi-line input (via `\`).
 * Add support for flags (named arguments) to commands.

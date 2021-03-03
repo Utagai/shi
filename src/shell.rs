@@ -200,10 +200,12 @@ impl<'a, S> Shell<'a, S> {
                     }
                 },
                 Err(ReadlineError::Interrupted) => {
+                    // TODO: We should make this say 'bye' or something.
                     println!("CTRL-C");
                     break;
                 }
                 Err(ReadlineError::Eof) => {
+                    // TODO: We should make this say 'bye' or something.
                     println!("CTRL-D");
                     break;
                 }
