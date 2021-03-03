@@ -257,6 +257,38 @@ impl ExecValidator {
 
         Ok(validate::ValidationResult::Valid(None))
     }
+
+    // validate_multiline effectively looks simply for a '\' at the end of the line, indicating
+    // that it is a multi-line input.
+    // Technically, one may say this is not perfectly 'correct'. Generally, we want to follow what
+    // bash does simply cause we assume that's what users are most familiar with and therefore
+    // expect from us. However, bash, in this case, will actually _not_ include the newline when
+    // you go to the next line, and also removes the slash.
+    // We don't... that's actually really bad. It makes it virtually useless.
+    // Which is why... we remove it later. But I'm not happy about this whatsoever, because ideally
+    // that removal should happen closer to the validation... not much we can do about it though,
+    // since rustyline doesn't make the input line mutable here.
+    fn validate_multiline(&self, cur_input: &str) -> rustyline::Result<validate::ValidationResult> {
+        if let Some('\\') = cur_input.chars().last() {
+            return Ok(validate::ValidationResult::Incomplete);
+        }
+
+        Ok(validate::ValidationResult::Valid(None))
+    }
+
+    fn merge_validation_results(
+        &self,
+        reses: Vec<validate::ValidationResult>,
+    ) -> validate::ValidationResult {
+        for res in reses.into_iter() {
+            match res {
+                validate::ValidationResult::Valid(_) => continue,
+                _ => return res,
+            };
+        }
+
+        validate::ValidationResult::Valid(None)
+    }
 }
 
 impl Validator for ExecValidator {
@@ -264,12 +296,11 @@ impl Validator for ExecValidator {
         &self,
         ctx: &mut validate::ValidationContext,
     ) -> rustyline::Result<validate::ValidationResult> {
-        match self.brackets.validate(ctx)? {
-            validate::ValidationResult::Valid(_) => (),
-            validation_res => return Ok(validation_res),
-        };
-
-        self.validate_quotes(ctx.input())
+        Ok(self.merge_validation_results(vec![
+            self.brackets.validate(ctx)?,
+            self.validate_quotes(ctx.input())?,
+            self.validate_multiline(ctx.input())?,
+        ]))
     }
 
     fn validate_while_typing(&self) -> bool {
@@ -675,13 +706,13 @@ mod test {
             assert_eq!(TestValidationResult::from(a), TestValidationResult::from(b));
         }
 
-        fn test_validation(input: &str, expected_validity: validate::ValidationResult) {
-            let validator = ExecValidator::new();
-
-            let validation_res = validator.validate_quotes(input);
-            match validation_res {
-                Ok(validation_res) => {
-                    validation_res_eq(validation_res, expected_validity);
+        fn check_validation_res(
+            res: rustyline::Result<validate::ValidationResult>,
+            expected: validate::ValidationResult,
+        ) {
+            match res {
+                Ok(res) => {
+                    validation_res_eq(res, expected);
                 }
                 Err(err) => {
                     panic!("did not expect an error during validation: {}", err);
@@ -689,76 +720,114 @@ mod test {
             }
         }
 
+        fn test_validation_quotes(input: &str, expected_validity: validate::ValidationResult) {
+            let validator = ExecValidator::new();
+
+            // We have to call validate_quotes() instead of validate(), because validate() needs to
+            // take a ValidationResult, which has no public constructor.
+            let validation_res = validator.validate_quotes(input);
+
+            check_validation_res(validation_res, expected_validity);
+        }
+
+        fn test_validation_multiline(input: &str, expected_validity: validate::ValidationResult) {
+            let validator = ExecValidator::new();
+
+            let validation_res = validator.validate_multiline(input);
+
+            check_validation_res(validation_res, expected_validity);
+        }
+
         #[test]
         fn one_single_quote() {
-            test_validation("\'", validate::ValidationResult::Incomplete);
+            test_validation_quotes("\'", validate::ValidationResult::Incomplete);
         }
 
         #[test]
         fn one_double_quote() {
-            test_validation("\"", validate::ValidationResult::Incomplete);
+            test_validation_quotes("\"", validate::ValidationResult::Incomplete);
         }
 
         #[test]
         fn balanced_single() {
-            test_validation("\'\'", validate::ValidationResult::Valid(None));
+            test_validation_quotes("\'\'", validate::ValidationResult::Valid(None));
         }
 
         #[test]
         fn balanced_double() {
-            test_validation("\"\"", validate::ValidationResult::Valid(None));
+            test_validation_quotes("\"\"", validate::ValidationResult::Valid(None));
         }
 
         #[test]
         fn unbalanced_but_escaped_is_ok() {
-            test_validation("\\'", validate::ValidationResult::Valid(None));
+            test_validation_quotes("\\'", validate::ValidationResult::Valid(None));
         }
 
         #[test]
         fn balanced_but_mismatched_quote_types_is_incomplete() {
-            test_validation("\'\"", validate::ValidationResult::Incomplete);
+            test_validation_quotes("\'\"", validate::ValidationResult::Incomplete);
         }
 
         #[test]
         fn nested_quotes_unbalanced_still_incomplete() {
-            test_validation("\'\"\'\"\'", validate::ValidationResult::Incomplete);
+            test_validation_quotes("\'\"\'\"\'", validate::ValidationResult::Incomplete);
         }
 
         #[test]
         fn overlapping_but_balanced_quotes_is_incomplete() {
-            test_validation("\' \" \' \"", validate::ValidationResult::Incomplete);
+            test_validation_quotes("\' \" \' \"", validate::ValidationResult::Incomplete);
         }
 
         #[test]
         fn multiple_escapes_valid() {
             // This is actually the literal string `\\\'`, meaning the last quote is escaped and
             // therefore valid.
-            test_validation("\\\\\\'", validate::ValidationResult::Valid(None));
+            test_validation_quotes("\\\\\\'", validate::ValidationResult::Valid(None));
         }
 
         #[test]
         fn multiple_escapes_incomplete() {
             // This is actually the literal string `\\\\'`, meaning the last quote is unescaped and
             // therefore incomplete.
-            test_validation("\\\\\\\\'", validate::ValidationResult::Incomplete);
+            test_validation_quotes("\\\\\\\\'", validate::ValidationResult::Incomplete);
         }
 
         #[test]
         fn closed_quote_block_with_unmatched_quote_inside_is_valid() {
-            test_validation("\"'\"", validate::ValidationResult::Valid(None));
+            test_validation_quotes("\"'\"", validate::ValidationResult::Valid(None));
         }
 
         #[test]
         fn many_quoted_blocks() {
-            test_validation(
+            test_validation_quotes(
                 "\'hey how are you?\' \"im doing ok\" \'please thank me for asking\'",
                 validate::ValidationResult::Valid(None),
             );
 
-            test_validation(
+            test_validation_quotes(
                 "'hey how are you?' \"im doing ok\" \\\\'please thank me for asking'",
                 validate::ValidationResult::Valid(None),
             );
+        }
+
+        #[test]
+        fn slash_at_end_is_incomplete() {
+            test_validation_multiline("hello world\\", validate::ValidationResult::Incomplete);
+        }
+
+        #[test]
+        fn slash_with_trailing_character_is_complete() {
+            test_validation_multiline("hello world\\g", validate::ValidationResult::Valid(None));
+        }
+
+        #[test]
+        fn slash_with_trailing_space_is_complete() {
+            test_validation_multiline("hello world\\ ", validate::ValidationResult::Valid(None));
+        }
+
+        #[test]
+        fn no_issues_is_complete() {
+            test_validation_multiline("hello world", validate::ValidationResult::Valid(None));
         }
     }
 }
