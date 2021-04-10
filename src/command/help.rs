@@ -16,6 +16,12 @@ pub struct HelpCommand<'a, S> {
     phantom: &'a PhantomData<S>,
 }
 
+impl<'a, S> Default for HelpCommand<'a, S> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<'a, S> HelpCommand<'a, S> {
     /// Creates a new HelpCommand.
     pub fn new() -> HelpCommand<'a, S> {
@@ -32,17 +38,17 @@ impl<'a, S> BaseCommand for HelpCommand<'a, S> {
         "help"
     }
 
-    fn validate_args(&self, args: &Vec<String>) -> Result<()> {
+    fn validate_args(&self, args: &[String]) -> Result<()> {
         if !args.is_empty() {
             // TODO: We may want to make this actually take arguments, like a command name or
             // command name path.
-            return Err(ShiError::ExtraArgs { got: args.clone() });
+            return Err(ShiError::ExtraArgs { got: args.to_vec() });
         }
 
         Ok(())
     }
 
-    fn execute(&self, shell: &mut Shell<S>, _: &Vec<String>) -> Result<String> {
+    fn execute(&self, shell: &mut Shell<S>, _: &[String]) -> Result<String> {
         // We expect there to be one line per command, +2 commands for headers of the two sections.
         let mut help_lines: Vec<String> =
             Vec::with_capacity(shell.cmds.borrow().len() + shell.builtins.len() + 2);

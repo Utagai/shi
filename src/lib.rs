@@ -37,11 +37,11 @@ mod test {
             "custom"
         }
 
-        fn validate_args(&self, _: &Vec<String>) -> Result<()> {
+        fn validate_args(&self, _: &[String]) -> Result<()> {
             Ok(())
         }
 
-        fn execute(&self, state: &mut Vec<String>, args: &Vec<String>) -> Result<String> {
+        fn execute(&self, state: &mut Vec<String>, args: &[String]) -> Result<String> {
             println!("hehe I am custom! state is: {:?}", state.get(0));
             match args.get(0) {
                 Some(arg) => state.push(format!("HIJACKED: '{}'", arg)),

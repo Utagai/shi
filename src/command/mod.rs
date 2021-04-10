@@ -75,14 +75,14 @@ impl<'a, S> BaseCommand for Command<'a, S> {
         }
     }
 
-    fn validate_args(&self, args: &Vec<String>) -> Result<()> {
+    fn validate_args(&self, args: &[String]) -> Result<()> {
         match self {
             Self::Leaf(cmd) => cmd.validate_args(args),
             Self::Parent(parent_cmd) => parent_cmd.validate_args(args),
         }
     }
 
-    fn execute(&self, state: &mut Self::State, args: &Vec<String>) -> Result<String> {
+    fn execute(&self, state: &mut Self::State, args: &[String]) -> Result<String> {
         match self {
             Self::Leaf(cmd) => cmd.execute(state, args),
             Self::Parent(parent_cmd) => parent_cmd.execute(state, args),
@@ -116,7 +116,7 @@ pub trait BaseCommand {
     ///
     /// # Arguments
     /// `args` - The arguments to validate.
-    fn validate_args(&self, args: &Vec<String>) -> Result<()>;
+    fn validate_args(&self, args: &[String]) -> Result<()>;
 
     // TODO: Execute should probably be returning something better than a Result<String>.
     /// Executes the command.
@@ -128,7 +128,7 @@ pub trait BaseCommand {
     /// # Returns
     /// `Result<String>` - The result of the execution of this command. If successful, returns a
     /// String that represents the output of the command.
-    fn execute(&self, state: &mut Self::State, args: &Vec<String>) -> Result<String>;
+    fn execute(&self, state: &mut Self::State, args: &[String]) -> Result<String>;
 
     /// Returns a String representing the help text of this command.
     ///

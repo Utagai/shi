@@ -188,7 +188,7 @@ impl DefaultTokenizer {
             }
         }
 
-        return blobs;
+        blobs
     }
 
     /// Globs together parts of the string that are surrounded by quotation marks, and returns a

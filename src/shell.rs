@@ -69,7 +69,7 @@ impl<'a, S> Shell<'a, S> {
         builtins.add(Command::new_leaf(ExitCommand::new()));
         builtins.add(Command::new_leaf(HistoryCommand::new()));
 
-        return builtins;
+        builtins
     }
 
     /// Constructs a new shell, with the given prompt & state.
@@ -149,7 +149,7 @@ impl<'a, S> Shell<'a, S> {
     pub fn eval(&mut self, line: &str) -> Result<String> {
         self.rl.add_history_entry(line);
         let mut splits = line.split(' ');
-        let potential_cmd = match splits.nth(0) {
+        let potential_cmd = match splits.next() {
             Some(cmd) => cmd,
             None => {
                 println!("empty!");
@@ -157,12 +157,9 @@ impl<'a, S> Shell<'a, S> {
             }
         };
         let args: Vec<String> = splits.map(|s| s.to_owned()).collect();
-        match self.cmds.borrow().get(potential_cmd) {
-            Some(cmd) => {
-                cmd.validate_args(&args)?;
-                return cmd.execute(&mut self.state, &args);
-            }
-            None => (),
+        if let Some(cmd) = self.cmds.borrow().get(potential_cmd) {
+            cmd.validate_args(&args)?;
+            return cmd.execute(&mut self.state, &args);
         };
 
         // Fallback to builtins. Then error if we got nothing.
@@ -170,13 +167,11 @@ impl<'a, S> Shell<'a, S> {
         match builtins_rc.get(potential_cmd) {
             Some(builtin) => {
                 builtin.validate_args(&args)?;
-                return builtin.execute(self, &args);
+                builtin.execute(self, &args)
             }
-            None => {
-                return Err(ShiError::UnrecognizedCommand {
-                    got: potential_cmd.to_string(),
-                })
-            }
+            None => Err(ShiError::UnrecognizedCommand {
+                got: potential_cmd.to_string(),
+            }),
         }
     }
 

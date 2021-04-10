@@ -140,8 +140,7 @@ impl<'a, S> Hinter for ExecHelper<'a, S> {
     type Hint = String;
 
     fn hint(&self, line: &str, pos: usize, ctx: &Context<'_>) -> Option<String> {
-        let hint = self.hinter.hint(line, pos, ctx);
-        hint
+        self.hinter.hint(line, pos, ctx)
     }
 }
 
@@ -408,7 +407,7 @@ impl<'a, S> ExecCompleter<'a, S> {
             // a space. The start of the line is itself a delimiter of sorts.
             if partial.is_empty() {
                 ""
-            } else if !partial.ends_with(" ") {
+            } else if !partial.ends_with(' ') {
                 // As said before, complete this as a space so that the next attempt at tab
                 // completion gives the results the user likely actually wanted to see.
                 return Ok((

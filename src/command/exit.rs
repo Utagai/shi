@@ -12,6 +12,12 @@ pub struct ExitCommand<'a, S> {
     phantom: &'a PhantomData<S>,
 }
 
+impl<'a, S> Default for ExitCommand<'a, S> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<'a, S> ExitCommand<'a, S> {
     /// Creates a new ExitCommand.
     pub fn new() -> ExitCommand<'a, S> {
@@ -28,15 +34,15 @@ impl<'a, S> BaseCommand for ExitCommand<'a, S> {
         "exit"
     }
 
-    fn validate_args(&self, args: &Vec<String>) -> Result<()> {
-        if args.len() != 0 {
-            return Err(ShiError::ExtraArgs { got: args.clone() });
+    fn validate_args(&self, args: &[String]) -> Result<()> {
+        if !args.is_empty() {
+            return Err(ShiError::ExtraArgs { got: args.to_vec() });
         }
 
         Ok(())
     }
 
-    fn execute(&self, shell: &mut Shell<S>, _: &Vec<String>) -> Result<String> {
+    fn execute(&self, shell: &mut Shell<S>, _: &[String]) -> Result<String> {
         shell.terminate = true;
         Ok(String::from("bye"))
     }

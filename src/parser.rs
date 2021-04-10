@@ -139,7 +139,7 @@ impl Parser {
     /// `Outcome` - The parse outcome, given the arguments.
     fn parse_tokens_with_set<'a, T>(
         &self,
-        tokens: &Vec<&'a str>,
+        tokens: &[&'a str],
         cmd_type: CommandType,
         set: &CommandSet<T>,
     ) -> Outcome<'a> {
@@ -217,7 +217,7 @@ impl Parser {
     /// `Outcome` - The parse outcome, given the arguments.
     fn parse_tokens<'a, S>(
         &self,
-        tokens: &Vec<&'a str>,
+        tokens: &[&'a str],
         cmds: &CommandSet<S>,
         builtins: &CommandSet<Shell<S>>,
     ) -> Outcome<'a> {
@@ -231,7 +231,7 @@ impl Parser {
             return builtin_outcome;
         }
 
-        return cmd_outcome;
+        cmd_outcome
     }
 
     /// Parses the given information into a parse `Outcome`.
@@ -288,12 +288,12 @@ pub mod test {
         }
 
         #[cfg(not(tarpaulin_include))]
-        fn validate_args(&self, _: &Vec<String>) -> Result<()> {
+        fn validate_args(&self, _: &[String]) -> Result<()> {
             Ok(())
         }
 
         #[cfg(not(tarpaulin_include))]
-        fn execute(&self, _: &mut S, _: &Vec<String>) -> Result<String> {
+        fn execute(&self, _: &mut S, _: &[String]) -> Result<String> {
             Ok(String::from(""))
         }
     }

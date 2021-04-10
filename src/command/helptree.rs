@@ -86,6 +86,12 @@ impl IndentContext {
     }
 }
 
+impl<'a, S> Default for HelpTreeCommand<'a, S> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<'a, S> HelpTreeCommand<'a, S> {
     /// Creates a new HelpTreeCommand.
     pub fn new() -> HelpTreeCommand<'a, S> {
@@ -228,17 +234,17 @@ impl<'a, S> BaseCommand for HelpTreeCommand<'a, S> {
         "helptree"
     }
 
-    fn validate_args(&self, args: &Vec<String>) -> Result<()> {
+    fn validate_args(&self, args: &[String]) -> Result<()> {
         if !args.is_empty() {
             // TODO: We may want to make this actually take arguments, like a command name or
             // command name path.
-            return Err(ShiError::ExtraArgs { got: args.clone() });
+            return Err(ShiError::ExtraArgs { got: args.to_vec() });
         }
 
         Ok(())
     }
 
-    fn execute(&self, shell: &mut Shell<'a, S>, _: &Vec<String>) -> Result<String> {
+    fn execute(&self, shell: &mut Shell<'a, S>, _: &[String]) -> Result<String> {
         let help_lines = self.to_lines(shell);
 
         Ok(help_lines.join("\n"))
