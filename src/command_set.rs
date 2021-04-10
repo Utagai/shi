@@ -8,6 +8,12 @@ pub struct CommandSet<'a, S> {
     cmds: HashMap<String, Box<Command<'a, S>>>,
 }
 
+impl<'a, S> Default for CommandSet<'a, S> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<'a, S> CommandSet<'a, S> {
     /// Creates a new, empty `CommandSet`.
     pub fn new() -> Self {
@@ -34,7 +40,8 @@ impl<'a, S> CommandSet<'a, S> {
     /// `name` - The name of the command to retrieve.
     ///
     /// # Returns
-    /// `Option<&Box<Command>>` - The command with the name requested, or None if it was not found.
+    /// `Option<&Command>` - The command with the name requested, or None if it was not found.
+    #[allow(clippy::borrowed_box)]
     pub fn get(&self, name: &str) -> Option<&Box<Command<'a, S>>> {
         self.cmds.get(name)
     }
@@ -77,7 +84,7 @@ impl<'a, S> CommandSet<'a, S> {
         // Since we are really just a map under the hood, we have no guaranteed ordering. This
         // helps this method be deterministic.
         names_vec.sort();
-        return names_vec;
+        names_vec
     }
 
     /// Produces an iterator over this set.
@@ -140,12 +147,12 @@ mod test {
         }
 
         #[cfg(not(tarpaulin_include))]
-        fn validate_args(&self, _: &Vec<String>) -> Result<()> {
+        fn validate_args(&self, _: &[String]) -> Result<()> {
             Ok(())
         }
 
         #[cfg(not(tarpaulin_include))]
-        fn execute(&self, _: &mut Self::State, _: &Vec<String>) -> Result<String> {
+        fn execute(&self, _: &mut Self::State, _: &[String]) -> Result<String> {
             Ok(String::from(""))
         }
     }

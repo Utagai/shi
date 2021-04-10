@@ -25,6 +25,7 @@ mod test {
 
     impl CustomCommand {
         // TODO: We may actually prefer to make this return Box<> to make our API less verbose.
+        #[allow(dead_code)]
         pub fn new() -> CustomCommand {
             CustomCommand {}
         }
@@ -37,11 +38,11 @@ mod test {
             "custom"
         }
 
-        fn validate_args(&self, _: &Vec<String>) -> Result<()> {
+        fn validate_args(&self, _: &[String]) -> Result<()> {
             Ok(())
         }
 
-        fn execute(&self, state: &mut Vec<String>, args: &Vec<String>) -> Result<String> {
+        fn execute(&self, state: &mut Vec<String>, args: &[String]) -> Result<String> {
             println!("hehe I am custom! state is: {:?}", state.get(0));
             match args.get(0) {
                 Some(arg) => state.push(format!("HIJACKED: '{}'", arg)),
@@ -51,6 +52,7 @@ mod test {
         }
     }
 
+    #[allow(dead_code)]
     fn fake_main() -> Result<()> {
         let lst: Vec<String> = Vec::new();
 

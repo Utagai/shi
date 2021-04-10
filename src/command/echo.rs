@@ -15,6 +15,12 @@ pub struct EchoCommand<S> {
     phantom: PhantomData<S>,
 }
 
+impl<S> Default for EchoCommand<S> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<S> EchoCommand<S> {
     /// Creates a new EchoCommand.
     pub fn new() -> EchoCommand<S> {
@@ -31,7 +37,7 @@ impl<S> BaseCommand for EchoCommand<S> {
         "echo"
     }
 
-    fn validate_args(&self, args: &Vec<String>) -> Result<()> {
+    fn validate_args(&self, args: &[String]) -> Result<()> {
         if args.is_empty() {
             return Err(ShiError::NoArgs);
         }
@@ -39,7 +45,7 @@ impl<S> BaseCommand for EchoCommand<S> {
         Ok(())
     }
 
-    fn execute(&self, _: &mut S, args: &Vec<String>) -> Result<String> {
+    fn execute(&self, _: &mut S, args: &[String]) -> Result<String> {
         // TODO: We should probably not expose the data type here, and instead return a joined
         // string.
         Ok(format!("ECHO: '{:?}'", args))

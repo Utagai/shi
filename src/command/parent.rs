@@ -33,7 +33,7 @@ impl<'a, S> ParentCommand<'a, S> {
     ///
     /// # Arguments
     /// `args` - The arguments that this command was invoked with.
-    fn get_sub_cmd_for_args(&self, args: &Vec<String>) -> Result<&Box<Command<S>>> {
+    fn get_sub_cmd_for_args(&self, args: &[String]) -> Result<&Command<S>> {
         let first_arg = match args.get(0) {
             Some(arg) => arg,
             None => return Err(ShiError::NoArgs),
@@ -67,14 +67,14 @@ impl<'a, S> BaseCommand for ParentCommand<'a, S> {
         self.name
     }
 
-    fn validate_args(&self, args: &Vec<String>) -> Result<()> {
+    fn validate_args(&self, args: &[String]) -> Result<()> {
         if let Some(first_arg) = args.first() {
             // If args given...
             if self.sub_commands().len() == 0 {
                 // But we expect no args...
                 return Err(ShiError::InvalidSubCommand {
                     got: first_arg.clone(),
-                    expected: args.clone(),
+                    expected: args.to_vec(),
                 });
             } else {
                 // If we expect args...
@@ -93,7 +93,7 @@ impl<'a, S> BaseCommand for ParentCommand<'a, S> {
         Ok(())
     }
 
-    fn execute(&self, state: &mut S, args: &Vec<String>) -> Result<String> {
+    fn execute(&self, state: &mut S, args: &[String]) -> Result<String> {
         let sub_cmd = self.get_sub_cmd_for_args(args)?;
 
         sub_cmd.execute(state, &args[1..].to_vec())

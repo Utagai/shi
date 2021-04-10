@@ -129,10 +129,10 @@ impl DefaultTokenizer {
                     });
                     next_idx = Some(i + 1);
                     break;
-                } else {
-                    if next_idx.is_none() {
-                        next_idx = Some(i)
-                    }
+                }
+
+                if next_idx.is_none() {
+                    next_idx = Some(i)
                 }
             }
 
@@ -188,7 +188,7 @@ impl DefaultTokenizer {
             }
         }
 
-        return blobs;
+        blobs
     }
 
     /// Globs together parts of the string that are surrounded by quotation marks, and returns a

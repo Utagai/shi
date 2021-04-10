@@ -16,6 +16,12 @@ pub struct HistoryCommand<'a, S> {
     phantom: &'a PhantomData<S>,
 }
 
+impl<'a, S> Default for HistoryCommand<'a, S> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<'a, S> HistoryCommand<'a, S> {
     /// Creates a new HistoryCommand.
     pub fn new() -> HistoryCommand<'a, S> {
@@ -32,17 +38,17 @@ impl<'a, S> BaseCommand for HistoryCommand<'a, S> {
         "history"
     }
 
-    fn validate_args(&self, args: &Vec<String>) -> Result<()> {
+    fn validate_args(&self, args: &[String]) -> Result<()> {
         if !args.is_empty() {
             // TODO: We will probably want to take an optional flag for searching.
             // TODO: Maybe an optional flag for num items.
-            return Err(ShiError::ExtraArgs { got: args.clone() });
+            return Err(ShiError::ExtraArgs { got: args.to_vec() });
         }
 
         Ok(())
     }
 
-    fn execute(&self, shell: &mut Shell<S>, _: &Vec<String>) -> Result<String> {
+    fn execute(&self, shell: &mut Shell<S>, _: &[String]) -> Result<String> {
         // A bit of a mouthful. We grab the underlying history of the shell, iterate it, map the
         // elements to strings, then collection them into a vector of Strings before we join them
         // with a newline + tab.
