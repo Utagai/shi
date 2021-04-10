@@ -1,8 +1,7 @@
 use std::rc::Rc;
 
-use anyhow::Result;
-
 use super::BaseCommand;
+use crate::Result;
 
 /// A BasicCommand is a very simple command type. It has a name, and it has a closure that it
 /// executes when it is invoked. The closure takes a state, as determined by its containing shell,

@@ -2,7 +2,7 @@
 //!
 //! This module includes all command-related functionality and interfaces for using shi.
 
-use anyhow::Result;
+use crate::Result;
 
 // TODO: We should be re-exporting these _from_ the command module. They should be submodules
 // underneath the command module.

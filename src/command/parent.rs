@@ -1,7 +1,7 @@
-use anyhow::{bail, Result};
-
 use super::{BaseCommand, Command};
 use crate::command_set::CommandSet;
+use crate::error::ShiError;
+use crate::Result;
 
 /// ParentCommand represents a command with subcommands. It has a name, but it does not execute
 /// anything itself. It dispatches to the appropriate child command, if one exists.
@@ -36,25 +36,21 @@ impl<'a, S> ParentCommand<'a, S> {
     fn get_sub_cmd_for_args(&self, args: &Vec<String>) -> Result<&Box<Command<S>>> {
         let first_arg = match args.get(0) {
             Some(arg) => arg,
-            None => bail!(
-                "expected one of {:?}, got nothing",
-                self.sub_commands()
-                    .iter()
-                    .map(|cmd| cmd.name())
-                    .collect::<Vec<&str>>()
-            ),
+            None => return Err(ShiError::NoArgs),
         };
 
         match self.sub_cmds.get(first_arg) {
             Some(cmd) => Ok(cmd),
-            None => bail!(
-                "expected one of {:?}, got {}",
-                self.sub_commands()
-                    .iter()
-                    .map(|cmd| cmd.name())
-                    .collect::<Vec<&str>>(),
-                first_arg
-            ),
+            None => {
+                return Err(ShiError::InvalidSubCommand {
+                    got: first_arg.to_string(),
+                    expected: self
+                        .sub_commands()
+                        .iter()
+                        .map(|cmd| cmd.name().to_string())
+                        .collect::<Vec<String>>(),
+                })
+            }
         }
     }
 
@@ -72,15 +68,27 @@ impl<'a, S> BaseCommand for ParentCommand<'a, S> {
     }
 
     fn validate_args(&self, args: &Vec<String>) -> Result<()> {
-        if self.sub_commands().len() == 0 && args.len() == 0 {
-            return Ok(());
-        } else if self.sub_commands().len() == 0 {
-            bail!("no sub commands expected, but got {:?}", args)
+        if let Some(first_arg) = args.first() {
+            // If args given...
+            if self.sub_commands().len() == 0 {
+                // But we expect no args...
+                return Err(ShiError::InvalidSubCommand {
+                    got: first_arg.clone(),
+                    expected: args.clone(),
+                });
+            } else {
+                // If we expect args...
+                // This will error if we do not find the command, but we don't actually care about the
+                // particular command we find here.
+                self.get_sub_cmd_for_args(args)?;
+            }
+        } else {
+            // If no args given...
+            if self.sub_commands().len() != 0 {
+                // But we expect args...
+                return Err(ShiError::NoArgs);
+            }
         }
-
-        // This will error if we do not find the command, but we don't actually care about the
-        // particular command we find here.
-        self.get_sub_cmd_for_args(args)?;
 
         Ok(())
     }

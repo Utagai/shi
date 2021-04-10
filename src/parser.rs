@@ -259,8 +259,7 @@ pub mod test {
     use super::*;
 
     use crate::command::BaseCommand;
-
-    use anyhow::Result;
+    use crate::Result;
 
     use pretty_assertions::assert_eq;
 

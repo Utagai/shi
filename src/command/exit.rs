@@ -1,9 +1,9 @@
 use std::marker::PhantomData;
 
-use anyhow::{bail, Result};
-
 use super::BaseCommand;
+use crate::error::ShiError;
 use crate::shell::Shell;
+use crate::Result;
 
 // TODO: This should be private.
 #[derive(Debug)]
@@ -30,7 +30,7 @@ impl<'a, S> BaseCommand for ExitCommand<'a, S> {
 
     fn validate_args(&self, args: &Vec<String>) -> Result<()> {
         if args.len() != 0 {
-            bail!("exit takes no arguments")
+            return Err(ShiError::ExtraArgs { got: args.clone() });
         }
 
         Ok(())

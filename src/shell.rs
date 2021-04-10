@@ -7,8 +7,6 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-// TODO: We should probably be using thiserror if this is going to be factored out into a library.
-use anyhow::{bail, Result};
 use rustyline::error::ReadlineError;
 
 use crate::command::{
@@ -16,8 +14,10 @@ use crate::command::{
     BaseCommand, Command,
 };
 use crate::command_set::CommandSet;
+use crate::error::ShiError;
 use crate::parser::Parser;
 use crate::readline::Readline;
+use crate::Result;
 
 /// The shell.
 ///
@@ -101,7 +101,9 @@ impl<'a, S> Shell<'a, S> {
     /// `cmd` - The command to register.
     pub fn register(&mut self, cmd: Command<'a, S>) -> Result<()> {
         if self.cmds.borrow().contains(cmd.name()) {
-            bail!("command '{}' already registered", cmd.name())
+            return Err(ShiError::AlreadyRegistered {
+                cmd: cmd.name().to_string(),
+            });
         }
 
         self.cmds.borrow_mut().add(cmd);
@@ -170,7 +172,11 @@ impl<'a, S> Shell<'a, S> {
                 builtin.validate_args(&args)?;
                 return builtin.execute(self, &args);
             }
-            None => bail!("Unrecognized command: '{}'", potential_cmd),
+            None => {
+                return Err(ShiError::UnrecognizedCommand {
+                    got: potential_cmd.to_string(),
+                })
+            }
         }
     }
 

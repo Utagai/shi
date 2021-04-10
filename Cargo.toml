@@ -7,10 +7,11 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.36"
+thiserror = "1.0.24"
 rustyline = "7.1.0"
 rustyline-derive = "0.4.0"
 colored = "2.0.0"
 
 [dev-dependencies]
+anyhow = "1.0.36"
 pretty_assertions = "0.6.1"

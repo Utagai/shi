@@ -1,9 +1,9 @@
 use std::marker::PhantomData;
 
-use anyhow::{bail, Result};
-
 use super::BaseCommand;
+use crate::error::ShiError;
 use crate::shell::Shell;
+use crate::Result;
 
 #[derive(Debug)]
 /// HistoryCommand emits a listing of the command history.
@@ -33,10 +33,10 @@ impl<'a, S> BaseCommand for HistoryCommand<'a, S> {
     }
 
     fn validate_args(&self, args: &Vec<String>) -> Result<()> {
-        if args.len() != 0 {
+        if !args.is_empty() {
             // TODO: We will probably want to take an optional flag for searching.
             // TODO: Maybe an optional flag for num items.
-            bail!("history takes no arguments")
+            return Err(ShiError::ExtraArgs { got: args.clone() });
         }
 
         Ok(())

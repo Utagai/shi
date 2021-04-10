@@ -1,9 +1,9 @@
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
-use anyhow::{bail, Result};
-
 use super::BaseCommand;
+use crate::error::ShiError;
+use crate::Result;
 
 #[derive(Debug)]
 /// EchoCommand is likely not very useful. It is here mostly for letting users scaffold their
@@ -32,8 +32,8 @@ impl<S> BaseCommand for EchoCommand<S> {
     }
 
     fn validate_args(&self, args: &Vec<String>) -> Result<()> {
-        if args.len() == 0 {
-            bail!("'{}' requires a non-zero number of arguments!")
+        if args.is_empty() {
+            return Err(ShiError::NoArgs);
         }
 
         Ok(())

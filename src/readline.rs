@@ -3,7 +3,6 @@ use std::cell::RefCell;
 use std::path::Path;
 use std::rc::Rc;
 
-use anyhow::Result;
 use colored::*;
 
 use rustyline::completion::{Completer, Pair};
@@ -16,6 +15,7 @@ use rustyline_derive::Helper;
 use crate::command_set::CommandSet;
 use crate::parser::Parser;
 use crate::shell::Shell;
+use crate::Result;
 
 /// A wrapper around `rustyline::Editor`.
 pub struct Readline<'a, S> {

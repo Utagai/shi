@@ -1,10 +1,10 @@
 use std::marker::PhantomData;
 
-use anyhow::{bail, Result};
-
 use super::{BaseCommand, Command};
 use crate::command_set::CommandSet;
+use crate::error::ShiError;
 use crate::shell::Shell;
+use crate::Result;
 
 #[derive(Debug)]
 /// HelpTreeCommand prints out a prettified and more complete version of the HelpCommand. It prints
@@ -229,10 +229,10 @@ impl<'a, S> BaseCommand for HelpTreeCommand<'a, S> {
     }
 
     fn validate_args(&self, args: &Vec<String>) -> Result<()> {
-        if args.len() != 0 {
+        if !args.is_empty() {
             // TODO: We may want to make this actually take arguments, like a command name or
             // command name path.
-            bail!("help takes no arguments")
+            return Err(ShiError::ExtraArgs { got: args.clone() });
         }
 
         Ok(())

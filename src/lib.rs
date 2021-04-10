@@ -2,19 +2,24 @@
 //!
 //! See the README.md and examples for more information.
 
+use std::result;
+
 pub mod command;
 mod command_set;
+pub mod error;
 mod parser;
 mod readline;
 pub mod shell;
 mod tokenizer;
+
+pub type Result<T> = result::Result<T, error::ShiError>;
 
 #[cfg(test)]
 mod test {
     use super::command::example::EchoCommand;
     use super::command::*;
     use super::shell::*;
-    use anyhow::Result;
+    use super::Result;
 
     struct CustomCommand {}
 

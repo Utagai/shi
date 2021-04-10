@@ -120,8 +120,7 @@ mod test {
     use super::*;
 
     use crate::command::{BaseCommand, Command};
-
-    use anyhow::Result;
+    use crate::Result;
 
     struct EmptyCommand<'a> {
         name: &'a str,
