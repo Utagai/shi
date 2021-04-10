@@ -16,8 +16,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Build
-      run: cargo build --verbose
+    - name: Build (all)
+      run: cargo build --all-targets --verbose
     - name: Touch all rust files so clippy can report all errors (rust-clippy#4612)
       run: find . | grep "\.rs\$" | xargs touch
     - name: Run clippy

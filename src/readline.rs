@@ -132,7 +132,7 @@ impl<'a, S> Completer for ExecHelper<'a, S> {
         pos: usize,
         _: &Context<'_>,
     ) -> rustyline::Result<(usize, Vec<Pair>)> {
-        self.completer.complete(line, pos)
+        Ok(self.completer.complete(line, pos))
     }
 }
 
@@ -261,6 +261,7 @@ impl ExecValidator {
         currently_in_quote
     }
 
+    #[allow(clippy::unnecessary_wraps)]
     fn validate_quotes(&self, cur_input: &str) -> rustyline::Result<validate::ValidationResult> {
         if self.is_currently_in_quote(cur_input) {
             return Ok(validate::ValidationResult::Incomplete);
@@ -282,6 +283,7 @@ impl ExecValidator {
     // can do about it though, since rustyline doesn't make the input line mutable here. Plus, what
     // we can do in Readline::readline() is limited (see the comment in that function on a
     // drawback).
+    #[allow(clippy::unnecessary_wraps)]
     fn validate_multiline(&self, cur_input: &str) -> rustyline::Result<validate::ValidationResult> {
         if let Some('\\') = cur_input.chars().last() {
             return Ok(validate::ValidationResult::Incomplete);
@@ -368,7 +370,7 @@ impl<'a, S> ExecCompleter<'a, S> {
     /// # Returns
     /// `rustyline::Result<(usize, Vec<Pair>)>` - A result of a position & completion results to
     /// present.
-    fn complete(&self, line: &str, pos: usize) -> rustyline::Result<(usize, Vec<Pair>)> {
+    fn complete(&self, line: &str, pos: usize) -> (usize, Vec<Pair>) {
         // First, let's get the slice of the line leading up to the position, because really,
         // that's what we actually care about when trying to determine the completion.
         let partial = match line.get(..pos) {
@@ -376,7 +378,7 @@ impl<'a, S> ExecCompleter<'a, S> {
             None => {
                 // This shouldn't ever happen, as I believe `pos` should always be within bounds of
                 // `line`. However, it doesn't hurt to be safe.
-                return Ok((0, Vec::new()));
+                return (0, Vec::new());
             }
         };
 
@@ -388,7 +390,7 @@ impl<'a, S> ExecCompleter<'a, S> {
         // If the parse was complete, then there is of course nothing to complete. It's...
         // complete.
         if outcome.complete {
-            return Ok((pos, vec![]));
+            return (pos, vec![]);
         }
 
         // The outcome includes what the parser would have allowed to have existed in the string.
@@ -410,13 +412,13 @@ impl<'a, S> ExecCompleter<'a, S> {
             } else if !partial.ends_with(' ') {
                 // As said before, complete this as a space so that the next attempt at tab
                 // completion gives the results the user likely actually wanted to see.
-                return Ok((
+                return (
                     pos,
                     vec![Pair {
                         display: String::from(" "),
                         replacement: String::from(" "),
                     }],
-                ));
+                );
             } else {
                 // Otherwise, the user already has the delimiter. So now we should provide any and
                 // all subsequent subcommands.
@@ -446,7 +448,7 @@ impl<'a, S> ExecCompleter<'a, S> {
             })
             .collect();
 
-        Ok((pos, pairs))
+        (pos, pairs)
     }
 }
 
@@ -471,35 +473,29 @@ mod test {
             ExecCompleter::new(Parser::new(), cmds, builtins)
         }
 
-        fn test_completion<'a>(
-            completer: ExecCompleter<'a, ()>,
+        fn test_completion(
+            completer: ExecCompleter<'_, ()>,
             line: &str,
             pos: usize,
             expected_pairs: Vec<Pair>,
         ) {
-            match completer.complete(line, pos) {
-                Ok(cmpl_res) => {
-                    let (cmpl_pos, pairs) = cmpl_res;
-                    // We should always be returning a position that is the given position.
-                    assert_eq!(cmpl_pos, pos, "mismatched positions");
+            let cmpl_res = completer.complete(line, pos);
+            let (cmpl_pos, pairs) = cmpl_res;
+            // We should always be returning a position that is the given position.
+            assert_eq!(cmpl_pos, pos, "mismatched positions");
 
-                    assert_eq!(
-                        pairs.len(),
-                        expected_pairs.len(),
-                        "mismatched number of completions"
-                    );
+            assert_eq!(
+                pairs.len(),
+                expected_pairs.len(),
+                "mismatched number of completions"
+            );
 
-                    for (p1, p2) in pairs.iter().zip(expected_pairs.iter()) {
-                        assert_eq!(p1.display, p2.display, "non-matching display strings");
-                        assert_eq!(
-                            p1.replacement, p2.replacement,
-                            "non-matching replacement strings"
-                        );
-                    }
-                }
-                Err(err) => {
-                    panic!(format!("failed to complete '{}': {}", line, err))
-                }
+            for (p1, p2) in pairs.iter().zip(expected_pairs.iter()) {
+                assert_eq!(p1.display, p2.display, "non-matching display strings");
+                assert_eq!(
+                    p1.replacement, p2.replacement,
+                    "non-matching replacement strings"
+                );
             }
         }
 

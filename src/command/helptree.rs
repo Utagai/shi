@@ -214,8 +214,7 @@ impl<'a, S> HelpTreeCommand<'a, S> {
             parent_lastness_chain: Vec::new(),
         };
 
-        let mut lines: Vec<String> = Vec::new();
-        lines.push(String::from("Normal commands"));
+        let mut lines: Vec<String> = vec![String::from("Normal commands")];
         self.add_tree_lines_for_children(&ctx.with_last(false), &mut lines, &shell.cmds.borrow());
 
         lines.push(String::from("\n"));

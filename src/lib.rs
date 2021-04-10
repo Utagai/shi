@@ -25,6 +25,7 @@ mod test {
 
     impl CustomCommand {
         // TODO: We may actually prefer to make this return Box<> to make our API less verbose.
+        #[allow(dead_code)]
         pub fn new() -> CustomCommand {
             CustomCommand {}
         }
@@ -51,6 +52,7 @@ mod test {
         }
     }
 
+    #[allow(dead_code)]
     fn fake_main() -> Result<()> {
         let lst: Vec<String> = Vec::new();
 
