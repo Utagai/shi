@@ -18,6 +18,8 @@ jobs:
     - uses: actions/checkout@v2
     - name: Build
       run: cargo build --verbose
+    - name: Touch all rust files so clippy can report all errors (rust-clippy#4612)
+      run: find . | grep "\.rs\$" | xargs touch
     - name: Run clippy
       run: cargo clippy --all-targets --all-features -- -D warnings
     - name: Run tests
