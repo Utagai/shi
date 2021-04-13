@@ -27,7 +27,7 @@ use shi::{cmd, parent};
 use anyhow::Result;
 
 fn main() -> Result<()> {
-    let mut shell = Shell::new("| "); ‣mut shell: Shell<()>
+    let mut shell = Shell::new("| ");
 
     shell.register(cmd!("dog", |_, _| { Ok(String::from("woof")) }))?;
     shell.register(parent!(
