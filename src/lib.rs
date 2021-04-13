@@ -14,6 +14,36 @@ mod tokenizer;
 
 pub type Result<T> = result::Result<T, error::ShiError>;
 
+#[macro_export]
+macro_rules! parent {
+    ( $name:expr, $( $x:expr ),* $(,)? ) => {
+        {
+            $crate::command::Command::new_parent(
+                $name,
+                vec![
+                $(
+                    $x,
+                )*
+                ],
+            )
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! leaf {
+    ( $cmd:expr ) => {
+        $crate::command::Command::new_leaf($cmd)
+    };
+}
+
+#[macro_export]
+macro_rules! cmd {
+    ( $name:expr, $exec:expr ) => {
+        $crate::leaf!($crate::command::BasicCommand::new($name, $exec))
+    };
+}
+
 #[cfg(test)]
 mod test {
     use super::command::example::EchoCommand;
