@@ -14,6 +14,7 @@ mod tokenizer;
 
 pub type Result<T> = result::Result<T, error::ShiError>;
 
+/// Creates a parent command that has child subcommands underneath it.
 #[macro_export]
 macro_rules! parent {
     ( $name:expr, $( $x:expr ),* $(,)? ) => {
@@ -30,6 +31,7 @@ macro_rules! parent {
     };
 }
 
+/// Creates a leaf command from a given Command.
 #[macro_export]
 macro_rules! leaf {
     ( $cmd:expr ) => {
@@ -37,6 +39,7 @@ macro_rules! leaf {
     };
 }
 
+/// Creates a leaf command from the given name and closure.
 #[macro_export]
 macro_rules! cmd {
     ( $name:expr, $exec:expr ) => {
