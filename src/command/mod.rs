@@ -160,7 +160,7 @@ pub trait BaseCommand {
     /// # Returns
     /// `Completion` - The completion result.
     fn autocomplete(&self, _args: Vec<&str>, _trailing_space: bool) -> Completion {
-        return Completion::Nothing;
+        Completion::Nothing
     }
 
     /// Returns a String representing the help text of this command.
