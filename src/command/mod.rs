@@ -97,6 +97,23 @@ impl<'a, S> BaseCommand for Command<'a, S> {
     }
 }
 
+/// Completion represents the result of an autocompletion for command arguments.
+///
+/// There are two cases that case occur:
+/// * `PartialArgCompletion` - The last argument is partially typed and can be completed to full.
+/// PartialArgCompletion contains the suffix which, when append to the partial argument,
+/// provides the full argument.
+/// * `Possibilities` - The arguments are complete, and there are guesses as to what the next
+/// argument could be.
+/// * `Nothing` - There are no completions to provide, either because there is no
+/// autocompletion, or because the command and its arguments are complete already.
+#[derive(Debug, PartialEq)]
+pub enum Completion {
+    PartialArgCompletion(Vec<String>),
+    Possibilities(Vec<String>),
+    Nothing,
+}
+
 /// BaseCommand is the lower-level command trait. It covers many of the behaviors one would expect
 /// from a shell command, e.g., a name (`name()`) or execution (`execute()`).
 ///
@@ -119,6 +136,7 @@ pub trait BaseCommand {
     fn validate_args(&self, args: &[String]) -> Result<()>;
 
     // TODO: Execute should probably be returning something better than a Result<String>.
+    // TODO: Execute should probably have &mut self.
     /// Executes the command.
     ///
     /// # Arguments
@@ -129,6 +147,21 @@ pub trait BaseCommand {
     /// `Result<String>` - The result of the execution of this command. If successful, returns a
     /// String that represents the output of the command.
     fn execute(&self, state: &mut Self::State, args: &[String]) -> Result<String>;
+
+    /// Autocompletes a command, given arguments.
+    ///
+    /// The default implementation provides no autocompletion.
+    ///
+    /// # Arguments
+    /// `args` - The arguments to autocomplete.
+    /// `trailing_space` - A boolean to indicate if there is a trailing space at the end of the
+    /// line where a user has asked for completion.
+    ///
+    /// # Returns
+    /// `Completion` - The completion result.
+    fn autocomplete(&self, _args: Vec<&str>, _trailing_space: bool) -> Completion {
+        return Completion::Nothing;
+    }
 
     /// Returns a String representing the help text of this command.
     ///

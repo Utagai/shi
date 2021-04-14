@@ -1,8 +1,16 @@
-/// Tokenizers pre-process the string into a vector of &str tokens for a parser. Effectively a
-/// tokenizer, but it doesn't necessarily emit a variety of tokens, but serves a purpose similar to
-/// a tokenizer, or I suppose, at least a scanner?
+pub struct Tokenization<'a> {
+    pub tokens: Vec<&'a str>,
+    pub trailing_space: bool,
+}
+
+/// Tokenizers pre-process the string into a vector of &str tokens for a parser. These tokens are
+/// essentially a way to split apart a line into command and arguments. Effectively a tokenizer,
+/// but it doesn't necessarily emit a variety of tokens, but serves a purpose similar to a
+/// tokenizer, or I suppose, at least a scanner?
 pub trait Tokenizer {
-    fn tokenize<'a>(&self, line: &'a str) -> Vec<&'a str>;
+    // Tokenize returns a vector of tokens (&str), and a bool to indicate if there was a trailing
+    // space.
+    fn tokenize<'a>(&self, line: &'a str) -> Tokenization<'a>;
 }
 
 /// DefaultTokenizer tokenizes an input string into tokens based on some default, basic rules.
@@ -285,10 +293,13 @@ impl Tokenizer for DefaultTokenizer {
     ///
     /// # Returns
     /// `Vec<&str>` - A series of slices into an input line that represent its component tokens.
-    fn tokenize<'a>(&self, line: &'a str) -> Vec<&'a str> {
+    fn tokenize<'a>(&self, line: &'a str) -> Tokenization<'a> {
         let line_bits_with_quotes_globbed = self.split_into_quote_blobs(line);
 
-        self.split_by_space(line_bits_with_quotes_globbed)
+        Tokenization {
+            tokens: self.split_by_space(line_bits_with_quotes_globbed),
+            trailing_space: line.ends_with(' '),
+        }
     }
 }
 
@@ -305,7 +316,7 @@ mod test {
         assert_eq!(
             tokenizer.tokenize(
                 "bar 'foo is here' and quux is not\n necessarily 'here'\" b\"ut you co|uld say 'there'-",
-            ),
+            ).tokens,
             vec![
                 "bar",
                 "'foo is here'",

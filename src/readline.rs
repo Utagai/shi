@@ -12,6 +12,7 @@ use rustyline::validate::{self, MatchingBracketValidator, Validator};
 use rustyline::{Config, Context, Editor};
 use rustyline_derive::Helper;
 
+use crate::command::Completion;
 use crate::command_set::CommandSet;
 use crate::parser::Parser;
 use crate::shell::Shell;
@@ -387,10 +388,59 @@ impl<'a, S> ExecCompleter<'a, S> {
             .parser
             .parse(partial, &self.cmds.borrow(), &self.builtins);
 
-        // If the parse was complete, then there is of course nothing to complete. It's...
-        // complete.
+        // If the parse was complete, then we've gone down to a leaf command, and all we have left
+        // is to try autocompletions on the arguments.
         if outcome.complete {
-            return (pos, vec![]);
+            match outcome.leaf_completion {
+                None => {
+                    return (pos, vec![]);
+                }
+                Some(completion) => match completion {
+                    Completion::Nothing => {
+                        return (pos, vec![]);
+                    }
+                    Completion::PartialArgCompletion(arg_suffixes) => {
+                        return (
+                            pos,
+                            arg_suffixes
+                                .iter()
+                                .map(|suffix_poss| Pair {
+                                    display: suffix_poss.clone(),
+                                    replacement: suffix_poss.clone(),
+                                })
+                                .collect(),
+                        );
+                    }
+                    Completion::Possibilities(possibilities) => {
+                        // Although we'd like to immediately get around to giving back completions, what's
+                        // important is that we pad it with a space delimiter in case the user tabs when their
+                        // cursor is adjacent to the argument, so we don't complete 'foo bar' to 'foo barbaz'
+                        // and instead get 'foo bar baz'.
+                        // Note how we don't do this for partial arg completions, since this are
+                        // meant to be concatenated.
+                        if !partial.ends_with(' ') {
+                            return (
+                                pos,
+                                vec![Pair {
+                                    display: String::from(" "),
+                                    replacement: String::from(" "),
+                                }],
+                            );
+                        }
+
+                        return (
+                            pos,
+                            possibilities
+                                .iter()
+                                .map(|poss| Pair {
+                                    display: poss.clone(),
+                                    replacement: poss.clone(),
+                                })
+                                .collect(),
+                        );
+                    }
+                },
+            }
         }
 
         // The outcome includes what the parser would have allowed to have existed in the string.

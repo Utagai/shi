@@ -1,7 +1,7 @@
-use crate::command::Command;
+use crate::command::{Command, Completion};
 use crate::command_set::CommandSet;
 use crate::shell::Shell;
-use crate::tokenizer::{DefaultTokenizer, Tokenizer};
+use crate::tokenizer::{DefaultTokenizer, Tokenization, Tokenizer};
 
 /// A parser that parses input lines into `Command` invocations.
 pub struct Parser {
@@ -25,17 +25,18 @@ pub enum CommandType {
 /// * `cmd_path` - The components of the command invocation. In particular, it shows the chain of
 /// ancestry in terms of `Parent` commands and the eventual `Leaf` command.
 /// * `remaining` - The remaining components of the string. In the case of a successful parse, this
-/// represents the arguments passed to the command. In the case of unsuccessful ir incomplete
+/// represents the arguments passed to the command. In the case of unsuccessful or incomplete
 /// parses, this represents the part of the input string that was not able to be parsed.
 /// * `cmd_type` - The type of the command. See `CommandType`.
 /// * `possibilities` - Includes the potential candidates that the parser is expecting to see
-/// following the input line. Of course, in successful/complete parses, this is empty.
+/// following the input line.
 /// * `complete` - A flag denoting whether we had a successful and complete parse.
 pub struct Outcome<'a> {
     cmd_path: Vec<&'a str>,
     pub remaining: Vec<&'a str>,
     cmd_type: CommandType,
     pub possibilities: Vec<String>,
+    pub leaf_completion: Option<Completion>,
     pub complete: bool,
 }
 
@@ -139,13 +140,13 @@ impl Parser {
     /// `Outcome` - The parse outcome, given the arguments.
     fn parse_tokens_with_set<'a, T>(
         &self,
-        tokens: &[&'a str],
+        tokenization: &Tokenization<'a>,
         cmd_type: CommandType,
         set: &CommandSet<T>,
     ) -> Outcome<'a> {
         let mut cmd_path: Vec<&str> = Vec::new();
         let mut current_set = set;
-        for (i, token) in tokens.iter().enumerate() {
+        for (i, token) in tokenization.tokens.iter().enumerate() {
             // Try looking up the token in our set.
             let looked_up_cmd = match current_set.get(token) {
                 Some(cmd) => {
@@ -156,7 +157,7 @@ impl Parser {
                     return Outcome {
                         cmd_path,
                         // NOTE Since i < len, .get(i..) will never panic.
-                        remaining: tokens.get(i..).unwrap().to_vec(),
+                        remaining: tokenization.tokens.get(i..).unwrap().to_vec(),
                         cmd_type: if i == 0 {
                             // If this is the first lookup, then obviously we have no idea what the
                             // type is.
@@ -165,6 +166,7 @@ impl Parser {
                             cmd_type
                         },
                         possibilities: current_set.names(),
+                        leaf_completion: None,
                         complete: false,
                     };
                 }
@@ -175,14 +177,20 @@ impl Parser {
             // If it is a leaf command, and has we're actually done and can return the current
             // cmd_path and remaining tokens and complete.
             match &**looked_up_cmd {
-                Command::Leaf(_) => {
-                    // This is a leaf command, so we are actually simply done.
+                Command::Leaf(cmd) => {
+                    // This is a leaf command, so we are actually almost done.
+                    // Leaf commands themselves, can, given their arguments, attempt a local
+                    // autocompletion. Let's give that a shot and then finish.
                     return Outcome {
                         cmd_path,
                         // NOTE Since i < len, .get(i+1..) will never panic.
-                        remaining: tokens.get(i + 1..).unwrap().to_vec(),
+                        remaining: tokenization.tokens.get(i + 1..).unwrap().to_vec(),
                         cmd_type,
                         possibilities: Vec::new(),
+                        leaf_completion: Some(cmd.autocomplete(
+                            tokenization.tokens.get(i + 1..).unwrap().to_vec(),
+                            tokenization.trailing_space,
+                        )),
                         complete: true,
                     };
                 }
@@ -196,12 +204,13 @@ impl Parser {
         Outcome {
             cmd_path,
             remaining: Vec::new(), // If we get here, we are out of tokens anyways.
-            cmd_type: if tokens.is_empty() {
+            cmd_type: if tokenization.tokens.is_empty() {
                 CommandType::Unknown
             } else {
                 cmd_type
             },
             possibilities: current_set.names(),
+            leaf_completion: None,
             complete: false,
         }
     }
@@ -217,16 +226,17 @@ impl Parser {
     /// `Outcome` - The parse outcome, given the arguments.
     fn parse_tokens<'a, S>(
         &self,
-        tokens: &[&'a str],
+        tokenization: &Tokenization<'a>,
         cmds: &CommandSet<S>,
         builtins: &CommandSet<Shell<S>>,
     ) -> Outcome<'a> {
-        let cmd_outcome = self.parse_tokens_with_set(tokens, CommandType::Custom, cmds);
+        let cmd_outcome = self.parse_tokens_with_set(tokenization, CommandType::Custom, cmds);
         if cmd_outcome.complete {
             return cmd_outcome;
         }
 
-        let builtin_outcome = self.parse_tokens_with_set(tokens, CommandType::Builtin, builtins);
+        let builtin_outcome =
+            self.parse_tokens_with_set(tokenization, CommandType::Builtin, builtins);
         if builtin_outcome.complete {
             return builtin_outcome;
         }
@@ -249,8 +259,8 @@ impl Parser {
         cmds: &CommandSet<S>,
         builtins: &CommandSet<Shell<S>>,
     ) -> Outcome<'a> {
-        let tokens = self.tokenizer.tokenize(line);
-        self.parse_tokens(&tokens, cmds, builtins)
+        let tokenization = self.tokenizer.tokenize(line);
+        self.parse_tokens(&tokenization, cmds, builtins)
     }
 }
 
@@ -268,6 +278,7 @@ pub mod test {
     #[derive(Debug)]
     struct ParseTestCommand<'a, S> {
         name: &'a str,
+        autocompletions: Vec<&'a str>,
         phantom: PhantomData<S>,
     }
 
@@ -275,6 +286,18 @@ pub mod test {
         fn new(name: &str) -> ParseTestCommand<S> {
             ParseTestCommand {
                 name,
+                autocompletions: Vec::new(),
+                phantom: PhantomData,
+            }
+        }
+
+        fn new_with_completions(
+            name: &'a str,
+            completions: Vec<&'a str>,
+        ) -> ParseTestCommand<'a, S> {
+            ParseTestCommand {
+                name,
+                autocompletions: completions,
                 phantom: PhantomData,
             }
         }
@@ -290,6 +313,41 @@ pub mod test {
         #[cfg(not(tarpaulin_include))]
         fn validate_args(&self, _: &[String]) -> Result<()> {
             Ok(())
+        }
+
+        fn autocomplete(&self, args: Vec<&str>, _: bool) -> Completion {
+            // If we don't have any autocompletions set, then just short-circuit out.
+            if self.autocompletions.is_empty() {
+                return Completion::Nothing;
+            }
+
+            match args.last() {
+                Some(last) => {
+                    if self.autocompletions.iter().filter(|s| s == &last).count() > 0 {
+                        // If the last argument is in our autocompletions, then we're good, nothing
+                        // more to complete.
+                        Completion::Nothing
+                    } else {
+                        let prefix_matches: Vec<String> = self
+                            .autocompletions
+                            .iter()
+                            .filter(|s| s.starts_with(last))
+                            .map(|s| s.to_string())
+                            .collect();
+
+                        if prefix_matches.is_empty() {
+                            // If nothing matched, then we have no completions.
+                            return Completion::Nothing;
+                        }
+                        // If not, then perhaps it is a prefix of an autocompletion. Let's give
+                        // back some partial arg completions if so!
+                        Completion::PartialArgCompletion(prefix_matches)
+                    }
+                }
+                None => Completion::Possibilities(
+                    self.autocompletions.iter().map(|s| s.to_string()).collect(),
+                ),
+            }
         }
 
         #[cfg(not(tarpaulin_include))]
@@ -328,7 +386,10 @@ pub mod test {
             CommandSet::new_from_vec(vec![
                 Command::new_parent(
                     "foo-b",
-                    vec![Command::new_leaf(ParseTestCommand::new("bar-b"))],
+                    vec![Command::new_leaf(ParseTestCommand::new_with_completions(
+                        "bar-b",
+                        vec!["ho", "he", "bum"],
+                    ))],
                 ),
                 Command::new_leaf(ParseTestCommand::new("conflict-tie")),
                 Command::new_leaf(ParseTestCommand::new("conflict-custom-wins")),
@@ -351,6 +412,7 @@ pub mod test {
                 remaining: vec!["he"],
                 cmd_type: CommandType::Custom,
                 possibilities: Vec::new(),
+                leaf_completion: Some(Completion::Nothing),
                 complete: true,
             }
         );
@@ -367,6 +429,7 @@ pub mod test {
                 remaining: vec![],
                 cmd_type: CommandType::Custom,
                 possibilities: Vec::new(),
+                leaf_completion: Some(Completion::Nothing),
                 complete: true,
             }
         );
@@ -383,6 +446,7 @@ pub mod test {
                 remaining: vec![],
                 cmd_type: CommandType::Custom,
                 possibilities: vec![String::from("corge-c"), String::from("quux-c")],
+                leaf_completion: None,
                 complete: false,
             }
         );
@@ -399,6 +463,7 @@ pub mod test {
                 remaining: vec!["he"],
                 cmd_type: CommandType::Builtin,
                 possibilities: Vec::new(),
+                leaf_completion: Some(Completion::Nothing),
                 complete: true,
             }
         );
@@ -421,6 +486,7 @@ pub mod test {
                     String::from("foo-c"),
                     String::from("grault-c"),
                 ],
+                leaf_completion: None,
                 complete: false,
             }
         );
@@ -441,6 +507,7 @@ pub mod test {
                     String::from("baz-c"),
                     String::from("qux-c"),
                 ],
+                leaf_completion: None,
                 complete: false,
             }
         );
@@ -457,6 +524,7 @@ pub mod test {
                 remaining: vec!["la", "la"],
                 cmd_type: CommandType::Custom,
                 possibilities: Vec::new(),
+                leaf_completion: Some(Completion::Nothing),
                 complete: true,
             }
         );
@@ -473,6 +541,7 @@ pub mod test {
                 remaining: vec![],
                 cmd_type: CommandType::Custom,
                 possibilities: Vec::new(),
+                leaf_completion: Some(Completion::Nothing),
                 complete: true,
             }
         );
@@ -491,6 +560,7 @@ pub mod test {
                 remaining: vec!["foo-c", "bar-c"],
                 cmd_type: CommandType::Custom,
                 possibilities: Vec::new(),
+                leaf_completion: Some(Completion::Nothing),
                 complete: true,
             }
         );
@@ -513,6 +583,7 @@ pub mod test {
                     String::from("foo-c"),
                     String::from("grault-c"),
                 ],
+                leaf_completion: None,
                 complete: false,
             }
         );
@@ -535,6 +606,7 @@ pub mod test {
                     String::from("foo-c"),
                     String::from("grault-c"),
                 ],
+                leaf_completion: None,
                 complete: false,
             }
         );
@@ -551,6 +623,7 @@ pub mod test {
                 remaining: vec!["la", "la"],
                 cmd_type: CommandType::Custom,
                 possibilities: Vec::new(),
+                leaf_completion: Some(Completion::Nothing),
                 complete: true,
             }
         );
@@ -567,6 +640,7 @@ pub mod test {
                 remaining: vec!["ha", "ha"],
                 cmd_type: CommandType::Custom,
                 possibilities: Vec::new(),
+                leaf_completion: Some(Completion::Nothing),
                 complete: true,
             }
         );
@@ -574,6 +648,8 @@ pub mod test {
 
     #[test]
     fn conflict_but_builtin_has_longer_match() {
+        // We are testing that custom commands have a higher precedence. Although this command
+        // exists identically in the builtin set, the custom variant is chosen.
         let cmds = make_parser_cmds();
 
         assert_eq!(
@@ -587,6 +663,7 @@ pub mod test {
                 remaining: vec!["child", "ha"],
                 cmd_type: CommandType::Custom,
                 possibilities: Vec::new(),
+                leaf_completion: Some(Completion::Nothing),
                 complete: true,
             }
         );
@@ -603,13 +680,106 @@ pub mod test {
                 remaining: vec!["ha"],
                 cmd_type: CommandType::Custom,
                 possibilities: Vec::new(),
+                leaf_completion: Some(Completion::Nothing),
+                complete: true,
+            }
+        );
+    }
+
+    #[test]
+    fn cmd_level_partial_autocompletion_multiple_choices() {
+        let cmds = make_parser_cmds();
+
+        assert_eq!(
+            Parser::new().parse("foo-b bar-b h", &cmds.0, &cmds.1),
+            Outcome {
+                cmd_path: vec!["foo-b", "bar-b"],
+                remaining: vec!["h"],
+                cmd_type: CommandType::Builtin,
+                possibilities: Vec::new(),
+                leaf_completion: Some(Completion::PartialArgCompletion(vec![
+                    String::from("ho"),
+                    String::from("he")
+                ])),
+                complete: true,
+            }
+        );
+    }
+
+    #[test]
+    fn cmd_level_partial_autocompletion_single_choice() {
+        let cmds = make_parser_cmds();
+
+        assert_eq!(
+            Parser::new().parse("foo-b bar-b b", &cmds.0, &cmds.1),
+            Outcome {
+                cmd_path: vec!["foo-b", "bar-b"],
+                remaining: vec!["b"],
+                cmd_type: CommandType::Builtin,
+                possibilities: Vec::new(),
+                leaf_completion: Some(Completion::PartialArgCompletion(vec![String::from("bum"),])),
+                complete: true,
+            }
+        );
+    }
+
+    #[test]
+    fn cmd_level_completion_all_options() {
+        let cmds = make_parser_cmds();
+
+        assert_eq!(
+            Parser::new().parse("foo-b bar-b", &cmds.0, &cmds.1),
+            Outcome {
+                cmd_path: vec!["foo-b", "bar-b"],
+                remaining: vec![],
+                cmd_type: CommandType::Builtin,
+                possibilities: Vec::new(),
+                leaf_completion: Some(Completion::Possibilities(vec![
+                    String::from("ho"),
+                    String::from("he"),
+                    String::from("bum"),
+                ])),
+                complete: true,
+            }
+        );
+    }
+
+    #[test]
+    fn cmd_level_completion_no_matches() {
+        let cmds = make_parser_cmds();
+
+        assert_eq!(
+            Parser::new().parse("foo-b bar-b z", &cmds.0, &cmds.1),
+            Outcome {
+                cmd_path: vec!["foo-b", "bar-b"],
+                remaining: vec!["z"],
+                cmd_type: CommandType::Builtin,
+                possibilities: Vec::new(),
+                leaf_completion: Some(Completion::Nothing),
+                complete: true,
+            }
+        );
+    }
+
+    #[test]
+    fn cmd_level_completion_already_complete() {
+        let cmds = make_parser_cmds();
+
+        assert_eq!(
+            Parser::new().parse("foo-b bar-b bum", &cmds.0, &cmds.1),
+            Outcome {
+                cmd_path: vec!["foo-b", "bar-b"],
+                remaining: vec!["bum"],
+                cmd_type: CommandType::Builtin,
+                possibilities: Vec::new(),
+                leaf_completion: Some(Completion::Nothing),
                 complete: true,
             }
         );
     }
 
     mod outcome {
-        use super::{CommandType, Outcome};
+        use super::{CommandType, Completion, Outcome};
 
         use pretty_assertions::assert_eq;
 
@@ -620,6 +790,7 @@ pub mod test {
                 remaining: vec!["la", "la"],
                 cmd_type: CommandType::Custom,
                 possibilities: Vec::new(),
+                leaf_completion: None,
                 complete: false,
             };
 
@@ -648,6 +819,7 @@ pub mod test {
                 remaining: vec![],
                 cmd_type: CommandType::Custom,
                 possibilities: Vec::new(),
+                leaf_completion: None,
                 complete: false,
             };
 
@@ -682,6 +854,7 @@ pub mod test {
                     String::from("foo-c"),
                     String::from("grault-c"),
                 ],
+                leaf_completion: None,
                 complete: false,
             };
 
@@ -706,6 +879,7 @@ pub mod test {
                 remaining: vec!["notfound", "la"],
                 cmd_type: CommandType::Custom,
                 possibilities: Vec::new(),
+                leaf_completion: None,
                 complete: false,
             };
 
@@ -726,6 +900,7 @@ pub mod test {
                 remaining: vec![],
                 cmd_type: CommandType::Custom,
                 possibilities: Vec::new(),
+                leaf_completion: Some(Completion::Nothing),
                 complete: true,
             };
 
