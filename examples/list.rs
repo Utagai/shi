@@ -8,7 +8,6 @@ fn main() -> Result<()> {
 
     let mut shell = Shell::new_with_state("| ", lst);
 
-    shell.set_and_load_history_file("readline_history.txt")?;
     shell.register(cmd!("pop", |the_lst: &mut Vec<String>, _| {
         let _ = the_lst.pop();
         Ok(String::from("popped last item"))

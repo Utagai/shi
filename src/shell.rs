@@ -196,7 +196,7 @@ impl<'a, S> Shell<'a, S> {
                         if !outcome.complete {
                             println!("{}", outcome.error_msg());
                         } else {
-                            println!("{:?}", err)
+                            println!("{}", err)
                         }
                     }
                 },

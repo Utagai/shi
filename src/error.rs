@@ -15,4 +15,14 @@ pub enum ShiError {
     UnrecognizedCommand { got: String },
     #[error("command already registered: {cmd}")]
     AlreadyRegistered { cmd: String },
+    #[error("error: {msg}")]
+    General { msg: String },
+}
+
+impl ShiError {
+    pub fn general<S: AsRef<str>>(msg: S) -> ShiError {
+        return ShiError::General {
+            msg: msg.as_ref().to_string(),
+        };
+    }
 }
