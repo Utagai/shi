@@ -63,6 +63,6 @@ impl<'a, S> BaseCommand for BasicCommand<'a, S> {
     }
 
     fn help(&self) -> String {
-        return self.help.to_string();
+        self.help.to_string()
     }
 }

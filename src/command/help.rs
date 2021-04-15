@@ -32,7 +32,7 @@ impl<'a, S> HelpCommand<'a, S> {
         }
     }
 
-    fn execute_no_args(&self, shell: &mut Shell<S>) -> Result<String> {
+    fn execute_no_args(&self, shell: &mut Shell<S>) -> String {
         // We expect there to be one line per command, +2 commands for headers of the two sections.
         let mut help_lines: Vec<String> =
             Vec::with_capacity(shell.cmds.borrow().len() + shell.builtins.len() + 2);
@@ -46,7 +46,7 @@ impl<'a, S> HelpCommand<'a, S> {
             help_lines.push(format!("\t'{}' - {}", builtin.name(), builtin.help()))
         }
 
-        Ok(help_lines.join("\n"))
+        help_lines.join("\n")
     }
 
     fn help_breakdown<T>(
@@ -55,12 +55,11 @@ impl<'a, S> HelpCommand<'a, S> {
         invocation_args: Vec<&str>,
         cmds: &CommandSet<T>,
     ) -> Result<String> {
-        let mut indent = 0;
         // We expect cmd_path.len() number of lines, one per segment, with potential for an extra
         // line for the command args. Let's request the maximum.
         let mut lines = Vec::with_capacity(cmd_path.len() + 1);
         let mut current_cmds = cmds;
-        for segment in cmd_path {
+        for (indent, segment) in cmd_path.iter().enumerate() {
             match current_cmds.get(segment) {
                 Some(cmd) => {
                     let cmd_name = cmd.name();
@@ -94,7 +93,6 @@ impl<'a, S> HelpCommand<'a, S> {
                     })
                 }
             }
-            indent += 1;
         }
 
         Ok(lines.join("\n"))
@@ -133,7 +131,7 @@ impl<'a, S> BaseCommand for HelpCommand<'a, S> {
 
     fn execute(&self, shell: &mut Shell<S>, args: &[String]) -> Result<String> {
         if args.is_empty() {
-            self.execute_no_args(shell)
+            Ok(self.execute_no_args(shell))
         } else {
             self.execute_with_args(shell, args)
         }
@@ -211,21 +209,19 @@ mod test {
             leaf!(TestCommand::new("quux", "2.4")),
         ))?;
 
-        verify_help_output(&mut shell, args, expected)
+        verify_help_output(&mut shell, args, expected);
+
+        Ok(())
     }
 
-    fn run_help_test_no_cmds(args: Vec<String>, expected: String) -> Result<()> {
+    fn run_help_test_no_cmds(args: Vec<String>, expected: String) {
         // TODO: Do we really need to make a shell to test this? Is this a code-smell?
         let mut shell = Shell::new("");
 
-        verify_help_output(&mut shell, args, expected)
+        verify_help_output(&mut shell, args, expected);
     }
 
-    fn verify_help_output(
-        shell: &mut Shell<()>,
-        args: Vec<String>,
-        expected: String,
-    ) -> Result<()> {
+    fn verify_help_output(shell: &mut Shell<()>, args: Vec<String>, expected: String) {
         let help_cmd = HelpCommand::new();
         match help_cmd.execute(shell, &args) {
             Ok(help_output) => {
@@ -236,8 +232,6 @@ mod test {
                 assert_eq!(format!("{}", err), expected)
             }
         };
-
-        Ok(())
     }
 
     #[test]
@@ -259,7 +253,7 @@ mod test {
     }
 
     #[test]
-    fn help_with_no_args_and_no_cmds() -> Result<()> {
+    fn help_with_no_args_and_no_cmds() {
         run_help_test_no_cmds(
             vec![],
             String::from(

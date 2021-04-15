@@ -87,7 +87,7 @@ impl<'a, S> CommandSet<'a, S> {
     /// # Returns
     /// `Vec<String>` - The top-level `Command` names.
     pub fn names(&self) -> Vec<String> {
-        return self.order.clone();
+        self.order.clone()
     }
 
     /// Produces an iterator over this set.
