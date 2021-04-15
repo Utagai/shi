@@ -289,6 +289,8 @@ pub mod test {
 
     use std::marker::PhantomData;
 
+    // TODO: We should not need to stutter and call it 'ParseTestCommand'. Just call it
+    // 'TestCommand'. It's obviously for parser tests.
     #[derive(Debug)]
     struct ParseTestCommand<'a, S> {
         name: &'a str,
@@ -459,7 +461,7 @@ pub mod test {
                 cmd_path: vec!["foo-c", "qux-c"],
                 remaining: vec![],
                 cmd_type: CommandType::Custom,
-                possibilities: vec![String::from("corge-c"), String::from("quux-c")],
+                possibilities: vec![String::from("quux-c"), String::from("corge-c")],
                 leaf_completion: None,
                 complete: false,
             }
@@ -494,11 +496,11 @@ pub mod test {
                 remaining: vec![],
                 cmd_type: CommandType::Unknown,
                 possibilities: vec![
-                    String::from("conflict-builtin-longer-match-but-still-loses"),
-                    String::from("conflict-custom-wins"),
-                    String::from("conflict-tie"),
                     String::from("foo-c"),
                     String::from("grault-c"),
+                    String::from("conflict-tie"),
+                    String::from("conflict-builtin-longer-match-but-still-loses"),
+                    String::from("conflict-custom-wins"),
                 ],
                 leaf_completion: None,
                 complete: false,
@@ -591,11 +593,11 @@ pub mod test {
                 remaining: vec!["notacmd"],
                 cmd_type: CommandType::Unknown,
                 possibilities: vec![
-                    String::from("conflict-builtin-longer-match-but-still-loses"),
-                    String::from("conflict-custom-wins"),
-                    String::from("conflict-tie"),
                     String::from("foo-c"),
                     String::from("grault-c"),
+                    String::from("conflict-tie"),
+                    String::from("conflict-builtin-longer-match-but-still-loses"),
+                    String::from("conflict-custom-wins"),
                 ],
                 leaf_completion: None,
                 complete: false,
@@ -614,11 +616,11 @@ pub mod test {
                 remaining: vec!["notacmd", "la", "la"],
                 cmd_type: CommandType::Unknown,
                 possibilities: vec![
-                    String::from("conflict-builtin-longer-match-but-still-loses"),
-                    String::from("conflict-custom-wins"),
-                    String::from("conflict-tie"),
                     String::from("foo-c"),
                     String::from("grault-c"),
+                    String::from("conflict-tie"),
+                    String::from("conflict-builtin-longer-match-but-still-loses"),
+                    String::from("conflict-custom-wins"),
                 ],
                 leaf_completion: None,
                 complete: false,
