@@ -15,7 +15,7 @@ use crate::command::{
 };
 use crate::command_set::CommandSet;
 use crate::error::ShiError;
-use crate::parser::Parser;
+use crate::parser::{CommandType, Parser};
 use crate::readline::Readline;
 use crate::Result;
 
@@ -27,6 +27,12 @@ pub struct Shell<'a, S> {
     prompt: &'a str,
     // TODO: We likely should NOT be exporting these, even within the crate. Instead, we should add
     // public getters, perhaps?
+    // We need Rc<RefCell> because:
+    // * We need Rc because Shell is a self-referencing struct, in that the cmds field is referenced
+    // by rl, so we need to allocate this at construction time (at runtime, on the heap) and share
+    // references. This calls for Rc.
+    // * Rc by itself is not mutable however, but we support adding commands to cmds. So we need
+    // RefCell.
     pub(crate) cmds: Rc<RefCell<CommandSet<'a, S>>>,
     pub(crate) builtins: Rc<CommandSet<'a, Self>>,
     pub(crate) rl: Readline<'a, S>,
@@ -148,30 +154,50 @@ impl<'a, S> Shell<'a, S> {
     /// `line` - The line to evaluate.
     pub fn eval(&mut self, line: &str) -> Result<String> {
         self.rl.add_history_entry(line);
-        let mut splits = line.split(' ');
-        let potential_cmd = match splits.next() {
-            Some(cmd) => cmd,
-            None => {
-                println!("empty!");
-                return Ok(String::from(""));
-            }
-        };
-        let args: Vec<String> = splits.map(|s| s.to_owned()).collect();
-        if let Some(cmd) = self.cmds.borrow().get(potential_cmd) {
-            cmd.validate_args(&args)?;
-            return cmd.execute(&mut self.state, &args);
-        };
+        let outcome = self
+            .parser
+            .parse(&line, &self.cmds.borrow(), &self.builtins);
 
-        // Fallback to builtins. Then error if we got nothing.
-        let builtins_rc = self.builtins.clone();
-        match builtins_rc.get(potential_cmd) {
-            Some(builtin) => {
-                builtin.validate_args(&args)?;
-                builtin.execute(self, &args)
+        if !outcome.complete {
+            return Err(outcome
+                .error()
+                .expect("incomplete parse, but failed to produce an error")); // This should never happen.
+        }
+
+        match outcome.cmd_type {
+            CommandType::Custom => {
+                // TODO: This should walk the cmd_path in-step with the command sets, instead of
+                // relying on the recursive implementation of ParentCommand.
+                if let Some(base_cmd_name) = outcome.cmd_path.first() {
+                    if let Some(base_cmd) = self.cmds.borrow().get(base_cmd_name) {
+                        let args: Vec<String> =
+                            line.split(' ').skip(1).map(|s| s.to_string()).collect();
+                        base_cmd.validate_args(&args)?;
+                        return base_cmd.execute(&mut self.state, &args);
+                    }
+                }
+
+                Err(ShiError::UnrecognizedCommand {
+                    got: line.to_string(),
+                })
             }
-            None => Err(ShiError::UnrecognizedCommand {
-                got: potential_cmd.to_string(),
-            }),
+            CommandType::Builtin => {
+                if let Some(base_cmd_name) = outcome.cmd_path.first() {
+                    if let Some(base_cmd) = self.builtins.clone().get(base_cmd_name) {
+                        let args: Vec<String> =
+                            line.split(' ').skip(1).map(|s| s.to_string()).collect();
+                        base_cmd.validate_args(&args)?;
+                        return base_cmd.execute(self, &args);
+                    }
+                }
+
+                Err(ShiError::UnrecognizedCommand {
+                    got: line.to_string(),
+                })
+            }
+            CommandType::Unknown => Err(outcome
+                .error()
+                .expect("parsed an Unknown, but failed to produce an error")), // This should never happen.
         }
     }
 
@@ -189,25 +215,14 @@ impl<'a, S> Shell<'a, S> {
             match input {
                 Ok(line) => match self.eval(&line) {
                     Ok(output) => println!("{}", output),
-                    Err(err) => {
-                        let outcome = self
-                            .parser
-                            .parse(&line, &self.cmds.borrow(), &self.builtins);
-                        if !outcome.complete {
-                            println!("{}", outcome.error_msg());
-                        } else {
-                            println!("{}", err)
-                        }
-                    }
+                    Err(err) => println!("Error: {}", err),
                 },
                 Err(ReadlineError::Interrupted) => {
-                    // TODO: We should make this say 'bye' or something.
-                    println!("CTRL-C");
+                    println!("-> CTRL+C; bye.");
                     break;
                 }
                 Err(ReadlineError::Eof) => {
-                    // TODO: We should make this say 'bye' or something.
-                    println!("CTRL-D");
+                    println!("-> CTRL+D; bye.");
                     break;
                 }
                 Err(err) => {

@@ -1,5 +1,6 @@
 use crate::command::{Command, Completion};
 use crate::command_set::CommandSet;
+use crate::error::ShiError;
 use crate::shell::Shell;
 use crate::tokenizer::{DefaultTokenizer, Tokenization, Tokenizer};
 
@@ -32,15 +33,28 @@ pub enum CommandType {
 /// following the input line.
 /// * `complete` - A flag denoting whether we had a successful and complete parse.
 pub struct Outcome<'a> {
-    cmd_path: Vec<&'a str>,
+    pub cmd_path: Vec<&'a str>,
     pub remaining: Vec<&'a str>,
-    cmd_type: CommandType,
+    pub cmd_type: CommandType,
     pub possibilities: Vec<String>,
     pub leaf_completion: Option<Completion>,
     pub complete: bool,
 }
 
 impl<'a> Outcome<'a> {
+    pub fn error(&self) -> Option<ShiError> {
+        if !self.complete {
+            Some(ShiError::ParseError {
+                msg: self.error_msg(),
+                cmd_path: self.cmd_path.iter().map(|s| s.to_string()).collect(),
+                remaining: self.remaining.iter().map(|s| s.to_string()).collect(),
+                possibilities: self.possibilities.clone(),
+            })
+        } else {
+            None
+        }
+    }
+
     /// Prints an error message for the `Outcome`. Of course, if the `Outcome` was complete, the
     /// error message is empty.
     pub fn error_msg(&self) -> String {
