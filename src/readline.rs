@@ -167,7 +167,7 @@ impl<'a, S> Highlighter for ExecHelper<'a, S> {
     }
 
     fn highlight_hint<'h>(&self, hint: &'h str) -> Cow<'h, str> {
-        Owned(hint.black().on_green().to_string())
+        Owned(hint.black().bold().to_string())
     }
 }
 
