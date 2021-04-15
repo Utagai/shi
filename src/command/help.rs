@@ -49,9 +49,16 @@ impl<'a, S> HelpCommand<'a, S> {
         Ok(help_lines.join("\n"))
     }
 
-    fn help_breakdown<T>(&self, cmd_path: Vec<&str>, cmds: &CommandSet<T>) -> Result<String> {
+    fn help_breakdown<T>(
+        &self,
+        cmd_path: Vec<&str>,
+        invocation_args: Vec<&str>,
+        cmds: &CommandSet<T>,
+    ) -> Result<String> {
         let mut indent = 0;
-        let mut lines = Vec::new();
+        // We expect cmd_path.len() number of lines, one per segment, with potential for an extra
+        // line for the command args. Let's request the maximum.
+        let mut lines = Vec::with_capacity(cmd_path.len() + 1);
         let mut current_cmds = cmds;
         for segment in cmd_path {
             match current_cmds.get(segment) {
@@ -66,7 +73,19 @@ impl<'a, S> HelpCommand<'a, S> {
                     ));
                     match &**cmd {
                         Command::Parent(parent) => current_cmds = parent.sub_commands(),
-                        Command::Leaf(_) => break,
+                        Command::Leaf(_) => {
+                            let mut called_with_msg =
+                                format!("Called with args: [{}]", invocation_args.join(", "));
+                            if invocation_args.is_empty() {
+                                called_with_msg = String::from("Called with no args")
+                            }
+                            lines.push(format!(
+                                "{}└─ {}",
+                                // Use two spaces since we have 2 pipe-characters & a space.
+                                "   ".repeat(indent + 1),
+                                called_with_msg,
+                            ));
+                        }
                     };
                 }
                 None => {
@@ -88,8 +107,12 @@ impl<'a, S> HelpCommand<'a, S> {
         // Now that we've parsed the args as a command invocation, we can offer a detailed help
         // break down for the command path:
         return match outcome.cmd_type {
-            CommandType::Custom => self.help_breakdown(outcome.cmd_path, &shell.cmds.borrow()),
-            CommandType::Builtin => self.help_breakdown(outcome.cmd_path, &shell.builtins),
+            CommandType::Custom => {
+                self.help_breakdown(outcome.cmd_path, outcome.remaining, &shell.cmds.borrow())
+            }
+            CommandType::Builtin => {
+                self.help_breakdown(outcome.cmd_path, outcome.remaining, &shell.builtins)
+            }
             CommandType::Unknown => Err(outcome
                 .error()
                 .expect("unknown command type, but could not produce error")),
@@ -114,5 +137,220 @@ impl<'a, S> BaseCommand for HelpCommand<'a, S> {
         } else {
             self.execute_with_args(shell, args)
         }
+    }
+
+    fn help(&self) -> String {
+        String::from("Prints help info for root commands or explains a given command invocation")
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::HelpCommand;
+    use crate::command::BaseCommand;
+    use crate::shell::Shell;
+    use crate::Result;
+    use crate::{leaf, parent};
+    use pretty_assertions::assert_eq;
+    use std::marker::PhantomData;
+
+    #[derive(Debug)]
+    struct TestCommand<'a, S> {
+        name: &'a str,
+        help: &'a str,
+        phantom: PhantomData<S>,
+    }
+
+    impl<'a, S> TestCommand<'a, S> {
+        fn new(name: &'a str, help: &'a str) -> TestCommand<'a, S> {
+            TestCommand {
+                name,
+                help,
+                phantom: PhantomData,
+            }
+        }
+    }
+
+    impl<'a, S> BaseCommand for TestCommand<'a, S> {
+        type State = S;
+
+        fn name(&self) -> &str {
+            self.name
+        }
+
+        #[cfg(not(tarpaulin_include))]
+        fn validate_args(&self, _: &[String]) -> Result<()> {
+            Ok(())
+        }
+
+        #[cfg(not(tarpaulin_include))]
+        fn execute(&self, _: &mut S, _: &[String]) -> Result<String> {
+            Ok(String::from(""))
+        }
+
+        fn help(&self) -> String {
+            self.help.to_string()
+        }
+    }
+
+    fn run_help_test(args: Vec<String>, expected: String) -> Result<()> {
+        // TODO: Do we really need to make a shell to test this? Is this a code-smell?
+        let mut shell = Shell::new("");
+        shell.register(leaf!(TestCommand::new("leaf", "1")))?;
+        shell.register(parent!(
+            "foo",
+            "2",
+            leaf!(TestCommand::new("bar", "2.1")),
+            leaf!(TestCommand::new("baz", "2.2")),
+            parent!(
+                "qux",
+                "2.3",
+                leaf!(TestCommand::new("quuz", "2.3.1")),
+                leaf!(TestCommand::new("corge", "2.3.2")),
+            ),
+            leaf!(TestCommand::new("quux", "2.4")),
+        ))?;
+
+        verify_help_output(&mut shell, args, expected)
+    }
+
+    fn run_help_test_no_cmds(args: Vec<String>, expected: String) -> Result<()> {
+        // TODO: Do we really need to make a shell to test this? Is this a code-smell?
+        let mut shell = Shell::new("");
+
+        verify_help_output(&mut shell, args, expected)
+    }
+
+    fn verify_help_output(
+        shell: &mut Shell<()>,
+        args: Vec<String>,
+        expected: String,
+    ) -> Result<()> {
+        let help_cmd = HelpCommand::new();
+        match help_cmd.execute(shell, &args) {
+            Ok(help_output) => {
+                println!("{}", help_output);
+                assert_eq!(help_output, expected);
+            }
+            Err(err) => {
+                assert_eq!(format!("{}", err), expected)
+            }
+        };
+
+        Ok(())
+    }
+
+    #[test]
+    fn help_with_no_args_gives_list() -> Result<()> {
+        run_help_test(
+            vec![],
+            String::from(
+                "\
+        Normal commands:\n\t\
+            \'leaf\' - 1\n\t\
+            \'foo\' - 2\n\
+        Built-in commands:\n\t\
+            \'help\' - Prints help info for root commands or explains a given command invocation\n\t\
+            \'helptree\' - Prints a tree depiction of all commands in this shell\n\t\
+            \'exit\' - Exits the shell session\n\t\
+            \'history\' - Prints the history of commands",
+            ),
+        )
+    }
+
+    #[test]
+    fn help_with_no_args_and_no_cmds() -> Result<()> {
+        run_help_test_no_cmds(
+            vec![],
+            String::from(
+                "\
+                Normal commands:\n\
+                Built-in commands:\n\t\
+                    \'help\' - Prints help info for root commands or explains a given command invocation\n\t\
+                    \'helptree\' - Prints a tree depiction of all commands in this shell\n\t\
+                    \'exit\' - Exits the shell session\n\t\
+                    \'history\' - Prints the history of commands\
+            "),
+        )
+    }
+
+    // NOTE: In some of the tests below, we can't use escaped multi-line strings because the escape
+    // removes the spacing that creates the tree-like structure.
+    #[test]
+    fn help_on_root_leaf_cmd() -> Result<()> {
+        run_help_test(
+            vec![String::from("leaf")],
+            String::from("└─ leaf - 1\n   └─ Called with no args"),
+        )
+    }
+
+    #[test]
+    fn help_on_root_parent_cmd() -> Result<()> {
+        run_help_test(vec![String::from("foo")], String::from("└─ foo - 2"))
+    }
+
+    #[test]
+    fn help_on_depth_2() -> Result<()> {
+        run_help_test(
+            vec![String::from("foo"), String::from("bar")],
+            String::from("└─ foo - 2\n   └─ bar - 2.1\n      └─ Called with no args"),
+        )
+    }
+
+    #[test]
+    fn help_on_depth_3() -> Result<()> {
+        run_help_test(
+            vec![
+                String::from("foo"),
+                String::from("qux"),
+                String::from("quuz"),
+            ],
+            String::from(
+                "└─ foo - 2\n   └─ qux - 2.3\n      └─ quuz - 2.3.1\n         └─ Called with no args",
+            ),
+        )
+    }
+
+    #[test]
+    fn help_on_depth_2_with_1_leaf_arg() -> Result<()> {
+        run_help_test(
+            vec![
+                String::from("foo"),
+                String::from("bar"),
+                String::from("hello"),
+            ],
+            String::from("└─ foo - 2\n   └─ bar - 2.1\n      └─ Called with args: [hello]"),
+        )
+    }
+
+    #[test]
+    fn help_on_depth_2_with_2_leaf_args() -> Result<()> {
+        run_help_test(
+            vec![
+                String::from("foo"),
+                String::from("bar"),
+                String::from("hello"),
+                String::from("world"),
+            ],
+            String::from("└─ foo - 2\n   └─ bar - 2.1\n      └─ Called with args: [hello, world]"),
+        )
+    }
+
+    #[test]
+    fn invalid_command_invocation() -> Result<()> {
+        run_help_test(
+            vec![String::from("DNE")],
+            String::from(
+                "\
+                command failed to parse: \'DNE\' is not a recognized command.\n\n\t \
+
+
+                    => expected one of \'leaf\' or \'foo\'.\n\n\
+
+
+                Run \'helptree\' for more info on the entire command tree.\n\
+                ",
+            ),
+        )
     }
 }

@@ -248,4 +248,8 @@ impl<'a, S> BaseCommand for HelpTreeCommand<'a, S> {
 
         Ok(help_lines.join("\n"))
     }
+
+    fn help(&self) -> String {
+        String::from("Prints a tree depiction of all commands in this shell")
+    }
 }
