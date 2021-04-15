@@ -14,7 +14,6 @@ Currently, `shi` is actually usable. The majority of remaining work involves qua
 
 - Upload to [crates.io](https://crates.io/) and linking to [docs.rs](https://docs.rs/).
 - Add support for flags (named arguments) to commands.
-- Flesh out the `help` of commands in `shi`.
 
 ## Example
 
