@@ -7,6 +7,7 @@ use crate::Result;
 /// anything itself. It dispatches to the appropriate child command, if one exists.
 pub struct ParentCommand<'a, S> {
     name: &'a str,
+    help: &'a str,
     sub_cmds: CommandSet<'a, S>,
 }
 
@@ -23,6 +24,28 @@ impl<'a, S> ParentCommand<'a, S> {
         }
         ParentCommand {
             name,
+            help: "",
+            sub_cmds: command_set,
+        }
+    }
+
+    /// Creates a new ParentCommand with the given help message.
+    ///
+    /// # Arguments
+    /// `name` - The name of this command.
+    /// `sub_cmds` - The subcommands or children of the `ParentCommand` to be created.
+    pub fn new_with_help(
+        name: &'a str,
+        help: &'a str,
+        sub_cmds: Vec<Command<'a, S>>,
+    ) -> ParentCommand<'a, S> {
+        let mut command_set = CommandSet::new();
+        for sub_cmd in sub_cmds {
+            command_set.add(sub_cmd);
+        }
+        ParentCommand {
+            name,
+            help,
             sub_cmds: command_set,
         }
     }
@@ -97,5 +120,9 @@ impl<'a, S> BaseCommand for ParentCommand<'a, S> {
         let sub_cmd = self.get_sub_cmd_for_args(args)?;
 
         sub_cmd.execute(state, &args[1..].to_vec())
+    }
+
+    fn help(&self) -> String {
+        self.help.to_string()
     }
 }
