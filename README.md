@@ -88,7 +88,7 @@ Builtins
 | dog
 woof
 | felid panther
-uhh what sound does a panther make
+generic panther sound
 | felid DNE
 Failed to parse fully:
 
