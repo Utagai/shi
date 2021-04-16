@@ -6,7 +6,9 @@
 [![crates.io](https://img.shields.io/crates/v/shi.svg)](https://crates.io/crates/shi)
 [![docs.rs](https://docs.rs/shi/badge.svg)](https://docs.rs/shi/)
 
-shi is a library for crafting interactive **_sh_**ell **_i_**nterfaces in Rust.
+<!-- prettier-ignore-start -->
+shi is a library for crafting interactive ***sh***ell ***i***nterfaces in Rust.
+<!-- prettier-ignore-end -->
 
 shi is built on top of the excellent
 [`rustyline`](https://github.com/kkawakam/rustyline). It adds abstractions for
