@@ -3,8 +3,9 @@
 # shi
 
 ![Rust](https://github.com/Utagai/shi/workflows/Rust/badge.svg)
+![docs.rs](https://docs.rs/shi/badge.svg)
 
-shi is a library for crafting <b>_sh_</b>ell <b>_i_</b>nterfaces in Rust.
+shi is a library for crafting ***sh***ell ***i***nterfaces in Rust.
 
 shi is built on top of the excellent
 [`rustyline`](https://github.com/kkawakam/rustyline). It adds abstractions for
