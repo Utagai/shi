@@ -7,7 +7,7 @@ license = "MIT"
 description = "A Rust library for crafting shell interfaces."
 repository = "https://github.com/utagai/shi"
 readme = "README.md"
-keywords = ["shell", "console", "interactive", "terminal", "command", "readline"]
+keywords = ["shell", "interactive", "cli", "command", "readline"]
 categories = ["command-line-interface"]
 exclude = [
   "rsrc/"
