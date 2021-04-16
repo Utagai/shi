@@ -46,4 +46,8 @@ impl<'a, S> BaseCommand for ExitCommand<'a, S> {
         shell.terminate = true;
         Ok(String::from("bye"))
     }
+
+    fn help(&self) -> String {
+        String::from("Exits the shell session")
+    }
 }

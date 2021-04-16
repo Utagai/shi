@@ -1,4 +1,5 @@
-use std::collections::{hash_map::Iter, HashMap};
+use std::collections::HashMap;
+use std::slice::Iter;
 
 use crate::command::{BaseCommand, Command};
 
@@ -6,6 +7,9 @@ use crate::command::{BaseCommand, Command};
 /// Commands.
 pub struct CommandSet<'a, S> {
     cmds: HashMap<String, Box<Command<'a, S>>>,
+    // Stores the insertion order of the keys of commands. For use in iteration to preserve command
+    // order.
+    order: Vec<String>,
 }
 
 impl<'a, S> Default for CommandSet<'a, S> {
@@ -19,6 +23,7 @@ impl<'a, S> CommandSet<'a, S> {
     pub fn new() -> Self {
         CommandSet {
             cmds: HashMap::new(),
+            order: Vec::new(),
         }
     }
 
@@ -51,7 +56,9 @@ impl<'a, S> CommandSet<'a, S> {
     /// # Arguments
     /// `cmd` - The command to add to this set.
     pub fn add(&mut self, cmd: Command<'a, S>) {
-        self.cmds.insert(cmd.name().to_owned(), Box::new(cmd));
+        let cmd_name = cmd.name().to_string();
+        self.cmds.insert(cmd_name.clone(), Box::new(cmd));
+        self.order.push(cmd_name);
     }
 
     /// Tests for existence of a `Command` with the given `name`.
@@ -73,18 +80,14 @@ impl<'a, S> CommandSet<'a, S> {
         self.cmds.len()
     }
 
-    /// Retrievse the command names of this command set.
+    /// Retrieves the command names of this command set.
     /// Note that this only includes the names at the topmost/root level, it does not potentially
     /// recurse into parent commands and flatten the hierarchy
     ///
     /// # Returns
     /// `Vec<String>` - The top-level `Command` names.
     pub fn names(&self) -> Vec<String> {
-        let mut names_vec: Vec<String> = self.iter().map(|cmd| cmd.name().to_string()).collect();
-        // Since we are really just a map under the hood, we have no guaranteed ordering. This
-        // helps this method be deterministic.
-        names_vec.sort();
-        names_vec
+        self.order.clone()
     }
 
     /// Produces an iterator over this set.
@@ -93,21 +96,27 @@ impl<'a, S> CommandSet<'a, S> {
     /// `CommandSetIterator` - An iterator over this `CommandSet`.
     pub fn iter(&self) -> CommandSetIterator<S> {
         CommandSetIterator {
-            iter: self.cmds.iter(),
+            iter: self.order.iter(),
+            cmds: self,
         }
     }
 }
 
 /// An iterator for `CommandSet`'s.
 pub struct CommandSetIterator<'a, S> {
-    iter: Iter<'a, String, Box<Command<'a, S>>>,
+    iter: Iter<'a, String>,
+    cmds: &'a CommandSet<'a, S>,
 }
 
-impl<'a, S> Iterator for CommandSetIterator<'a, S> {
+impl<'a, S: 'a> Iterator for CommandSetIterator<'a, S> {
     type Item = &'a Box<Command<'a, S>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next().map(|(_, v)| v)
+        self.iter.next().map(|k| {
+            self.cmds
+                .get(k)
+                .expect("order vector and command map mismatch")
+        })
     }
 }
 

@@ -128,6 +128,8 @@ pub trait BaseCommand {
     fn name(&self) -> &str;
 
     // TODO: This may be better removed and implied to implementors to include in execute()'s body.
+    //       Alternatively, this could return a type that execute takes instead of args.
+    // TODO: Perhaps this should take the state, so that validation can occur w.r.t. the state.
     /// Validates the given arguments, returning a `Result<()>` indicating the result of
     /// validation.
     ///
@@ -164,11 +166,10 @@ pub trait BaseCommand {
     }
 
     /// Returns a String representing the help text of this command.
+    /// By default, returns nothing.
     ///
     /// Expected to be relatively brief.
     fn help(&self) -> String {
-        // TODO(may): Need to flesh this out more.
-        // Likely, we should return a dedicated Help object that can be formatted.
-        format!("'{}'", self.name())
+        "".to_string()
     }
 }

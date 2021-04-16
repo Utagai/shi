@@ -64,4 +64,8 @@ impl<'a, S> BaseCommand for HistoryCommand<'a, S> {
         // therefore only have the \n from the print.
         Ok(format!("\t{}", history_output))
     }
+
+    fn help(&self) -> String {
+        String::from("Prints the history of commands")
+    }
 }

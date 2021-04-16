@@ -167,7 +167,7 @@ impl<'a, S> Highlighter for ExecHelper<'a, S> {
     }
 
     fn highlight_hint<'h>(&self, hint: &'h str) -> Cow<'h, str> {
-        Owned(hint.black().on_green().to_string())
+        Owned(hint.black().bold().to_string())
     }
 }
 
@@ -587,16 +587,16 @@ mod test {
                 line.len(),
                 vec![
                     Pair {
+                        display: "tie".to_string(),
+                        replacement: "tie".to_string(),
+                    },
+                    Pair {
                         display: "builtin-longer-match-but-still-loses".to_string(),
                         replacement: "builtin-longer-match-but-still-loses".to_string(),
                     },
                     Pair {
                         display: "custom-wins".to_string(),
                         replacement: "custom-wins".to_string(),
-                    },
-                    Pair {
-                        display: "tie".to_string(),
-                        replacement: "tie".to_string(),
                     },
                 ],
             )
@@ -640,12 +640,12 @@ mod test {
                 line.len(),
                 vec![
                     Pair {
-                        display: "corge-c".to_string(),
-                        replacement: "corge-c".to_string(),
-                    },
-                    Pair {
                         display: "quux-c".to_string(),
                         replacement: "quux-c".to_string(),
+                    },
+                    Pair {
+                        display: "corge-c".to_string(),
+                        replacement: "corge-c".to_string(),
                     },
                 ],
             )
@@ -680,24 +680,24 @@ mod test {
                 line.len(),
                 vec![
                     Pair {
-                        display: "conflict-builtin-longer-match-but-still-loses".to_string(),
-                        replacement: "conflict-builtin-longer-match-but-still-loses".to_string(),
-                    },
-                    Pair {
-                        display: "conflict-custom-wins".to_string(),
-                        replacement: "conflict-custom-wins".to_string(),
-                    },
-                    Pair {
-                        display: "conflict-tie".to_string(),
-                        replacement: "conflict-tie".to_string(),
-                    },
-                    Pair {
                         display: "foo-c".to_string(),
                         replacement: "foo-c".to_string(),
                     },
                     Pair {
                         display: "grault-c".to_string(),
                         replacement: "grault-c".to_string(),
+                    },
+                    Pair {
+                        display: "conflict-tie".to_string(),
+                        replacement: "conflict-tie".to_string(),
+                    },
+                    Pair {
+                        display: "conflict-builtin-longer-match-but-still-loses".to_string(),
+                        replacement: "conflict-builtin-longer-match-but-still-loses".to_string(),
+                    },
+                    Pair {
+                        display: "conflict-custom-wins".to_string(),
+                        replacement: "conflict-custom-wins".to_string(),
                     },
                 ],
             )

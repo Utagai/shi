@@ -8,11 +8,11 @@ use crate::Result;
 /// and a vector of String arguments.
 pub struct BasicCommand<'a, S> {
     name: &'a str,
+    help: &'a str,
     exec: Rc<dyn Fn(&mut S, &[String]) -> Result<String>>,
 }
 
 impl<'a, S> BasicCommand<'a, S> {
-    // TODO: We may actually prefer to make this return Box<> to make our API less verbose.
     /// Creates a new BasicCommand with the given name and closure.
     ///
     /// # Arguments
@@ -24,6 +24,24 @@ impl<'a, S> BasicCommand<'a, S> {
     {
         BasicCommand {
             name,
+            help: "",
+            exec: Rc::new(exec),
+        }
+    }
+
+    /// Creates a new BasicCommand with the given name, closure and help message.
+    ///
+    /// # Arguments
+    /// * `name` - The name of the command. This is how users will execute the command.
+    /// * `exec` - The closure that will be executed when this command is invoked.
+    /// * `help` - The help message to use.
+    pub fn new_with_help<F>(name: &'a str, help: &'a str, exec: F) -> BasicCommand<'a, S>
+    where
+        F: Fn(&mut S, &[String]) -> Result<String> + 'static,
+    {
+        BasicCommand {
+            name,
+            help,
             exec: Rc::new(exec),
         }
     }
@@ -42,5 +60,9 @@ impl<'a, S> BaseCommand for BasicCommand<'a, S> {
 
     fn execute(&self, state: &mut S, args: &[String]) -> Result<String> {
         (self.exec)(state, args)
+    }
+
+    fn help(&self) -> String {
+        self.help.to_string()
     }
 }

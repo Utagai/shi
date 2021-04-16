@@ -15,7 +15,7 @@ use crate::command::{
 };
 use crate::command_set::CommandSet;
 use crate::error::ShiError;
-use crate::parser::{CommandType, Parser};
+use crate::parser::{CommandType, Outcome, Parser};
 use crate::readline::Readline;
 use crate::Result;
 
@@ -36,7 +36,7 @@ pub struct Shell<'a, S> {
     pub(crate) cmds: Rc<RefCell<CommandSet<'a, S>>>,
     pub(crate) builtins: Rc<CommandSet<'a, Self>>,
     pub(crate) rl: Readline<'a, S>,
-    pub(crate) parser: Parser,
+    parser: Parser,
     history_file: Option<&'a str>,
     state: S,
     pub(crate) terminate: bool,
@@ -145,6 +145,11 @@ impl<'a, S> Shell<'a, S> {
         Ok(())
     }
 
+    pub(crate) fn parse<'b>(&mut self, line: &'b str) -> Outcome<'b> {
+        self.parser
+            .parse(&line, &self.cmds.borrow(), &self.builtins)
+    }
+
     /// Eval executes a single loop of the shell's run-loop.
     ///
     /// In other words, it takes a single input line and executes on it; `run()` is a loop over
@@ -154,9 +159,7 @@ impl<'a, S> Shell<'a, S> {
     /// `line` - The line to evaluate.
     pub fn eval(&mut self, line: &str) -> Result<String> {
         self.rl.add_history_entry(line);
-        let outcome = self
-            .parser
-            .parse(&line, &self.cmds.borrow(), &self.builtins);
+        let outcome = self.parse(line);
 
         if !outcome.complete {
             return Err(outcome
