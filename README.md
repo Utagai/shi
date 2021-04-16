@@ -6,14 +6,25 @@
 
 shi is a library for crafting <b>_sh_</b>ell <b>_i_</b>nterfaces in Rust.
 
-shi wraps the excellent [`rustyline`](https://github.com/kkawakam/rustyline).
+shi is built on top of the excellent
+[`rustyline`](https://github.com/kkawakam/rustyline). It adds abstractions for
+supporting commands, parsing them and supporting dynamic autocompletion with
+zero work.
 
 ## What's Left
 
 There's a few things here and there that would be nice to do. Most of this is
-code clean-up and quality of life improvements, rather than features. I'm
-likely the only person using his crate, so I won't know what other features or
-changse would be nice to have for people. Feel free to suggest some.
+code clean-up and quality of life improvements, rather than features. For
+example, I only recently learned about the [Rust API
+Guidelines](https://rust-lang.github.io/api-guidelines/checklist.html). I'm
+probably breaking some rules there that are worth fixing.
+
+I'm likely the only person using his crate, so I won't know what other features
+or changes would be nice to have for people. Feel free to suggest some (or put
+up a PR).
+
+`shi` is used in some of my personal projects, which I'll link here when
+they're ready. Otherwise, it's ready to use, though it is not stable.
 
 ## Example
 
