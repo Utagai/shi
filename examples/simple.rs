@@ -16,12 +16,12 @@ fn main() -> Result<()> {
     shell.register(parent!(
         "felid",
         cmd!("panther", |_, _| {
-            Ok(String::from("uhh what sound does a panther make"))
+            Ok(String::from("generic panther sound"))
         }),
         parent!(
             "felinae",
             cmd!("domestic-cat", |_, _| { Ok(String::from("meow")) }),
-            cmd!("dangerous-tiger", |_, _| { Ok(String::from("rawr")) }),
+            cmd!("dangerous-tiger", |_, _| { Ok(String::from("roar")) }),
         )
     ))?;
 

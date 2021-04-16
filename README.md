@@ -6,14 +6,14 @@
 
 shi is a library for crafting <b>_sh_</b>ell <b>_i_</b>nterfaces in Rust.
 
-**WIP**.
+shi wraps the excellent [`rustyline`](https://github.com/kkawakam/rustyline).
 
 ## What's Left
 
-Currently, `shi` is actually usable. The majority of remaining work involves quality of life and UX improvements, both for the shell interface itself, as well as the API. Currently, I'm using it in two personal projects of mine, which I'll be sure to link in this README when they are ready. Here's a (not comprehensive) list of things I would like to still do for `shi`:
-
-- Upload to [crates.io](https://crates.io/) and linking to [docs.rs](https://docs.rs/).
-- Add support for flags (named arguments) to commands.
+There's a few things here and there that would be nice to do. Most of this is
+code clean-up and quality of life improvements, rather than features. I'm
+likely the only person using his crate, so I won't know what other features or
+changse would be nice to have for people. Feel free to suggest some.
 
 ## Example
 
@@ -32,12 +32,12 @@ fn main() -> Result<()> {
     shell.register(parent!(
         "felid",
         cmd!("panther", |_, _| {
-            Ok(String::from("uhh what sound does a panther make"))
+            Ok(String::from("generic panther sound"))
         }),
         parent!(
             "felinae",
             cmd!("domestic-cat", |_, _| { Ok(String::from("meow")) }),
-            cmd!("dangerous-tiger", |_, _| { Ok(String::from("rawr")) }),
+            cmd!("dangerous-tiger", |_, _| { Ok(String::from("roar")) }),
         )
     ))?;
 
