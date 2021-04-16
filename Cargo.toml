@@ -9,6 +9,9 @@ repository = "https://github.com/utagai/shi"
 readme = "README.md"
 keywords = ["shell", "console", "interactive", "terminal", "command", "readline"]
 categories = ["command-line-interface"]
+exclude = [
+  "rsrc/"
+]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
