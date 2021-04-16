@@ -2,8 +2,9 @@
 
 # shi
 
-![Rust](https://github.com/Utagai/shi/workflows/Rust/badge.svg)
-![docs.rs](https://docs.rs/shi/badge.svg)
+[![Rust](https://github.com/Utagai/shi/workflows/Rust/badge.svg)](https://github.com/Utagai/shi/actions/workflows/rust.yml?query=branch%3Amaster)
+[![crates.io](https://img.shields.io/crates/v/shi.svg)](https://crates.io/crates/shi)
+[![docs.rs](https://docs.rs/shi/badge.svg)](https://docs.rs/shi/)
 
 shi is a library for crafting ***sh***ell ***i***nterfaces in Rust.
 
@@ -115,3 +116,7 @@ bye
 
 This is my first Rust crate, so I welcome any and all feedback, even from fellow newbies.
 There is no process for this though. Just open an issue or a PR. :slightly_smiling_face:
+
+## Documentation
+
+Docs are hosted at [docs.rs/shi](https://docs.rs/shi/).
