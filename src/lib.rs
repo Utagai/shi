@@ -65,4 +65,10 @@ macro_rules! cmd {
             $name, $help, $exec
         ))
     };
+    // Allow trailing comma.
+    ( $name:expr, $help:literal, $exec:expr, ) => {
+        $crate::leaf!($crate::command::BasicCommand::new_with_help(
+            $name, $help, $exec
+        ))
+    };
 }

@@ -39,7 +39,7 @@ fn main() -> Result<()> {
             |the_lst: &mut Vec<String>, _| {
                 the_lst.push("title".to_owned());
                 Ok(String::from("Added 'title'"))
-            }
+            },
         ),
         parent!(
             "isbn",
@@ -50,7 +50,7 @@ fn main() -> Result<()> {
                 |the_lst: &mut Vec<String>, _| {
                     the_lst.push("eu".to_owned());
                     Ok(String::from("Added 'eu'"))
-                }
+                },
             ),
             cmd!(
                 "us",
