@@ -95,11 +95,10 @@ impl<'a> Outcome<'a> {
             msg += "\t    (spaces trimmed)\n";
             if self.remaining.is_empty() {
                 msg += &format!("\t => '{}  '\n", valid_prefix);
-                msg += &format!("\t     {}^\n", " ".repeat(valid_prefix.len() + 1));
             } else {
                 msg += &format!("\t => '{} {}'\n", valid_prefix, invalid_suffix);
-                msg += &format!("\t     {}^\n", " ".repeat(valid_prefix.len() + 1));
             }
+            msg += &format!("\t     {}^\n", " ".repeat(valid_prefix.len() + 1));
 
             msg += "expected a valid subcommand\n";
             msg += "instead, got: ";
