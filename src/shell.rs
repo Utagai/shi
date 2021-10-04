@@ -168,12 +168,17 @@ impl<'a, S> Shell<'a, S> {
 
         match outcome.cmd_type {
             CommandType::Custom => {
-                // TODO: This should walk the cmd_path in-step with the command sets, instead of
-                // relying on the recursive implementation of ParentCommand.
+                // TODO: This recursive walking through the arguments when we pass this into the
+                // ParentCommand is redundant, since we already did that work when we parsed
+                // things. We should avoid doing this.
                 if let Some(base_cmd_name) = outcome.cmd_path.first() {
                     if let Some(base_cmd) = self.cmds.borrow().get(base_cmd_name) {
-                        let args: Vec<String> =
-                            line.split(' ').skip(1).map(|s| s.to_string()).collect();
+                        let args: Vec<String> = outcome
+                            .cmd_path
+                            .iter()
+                            .skip(1)
+                            .map(|s| s.to_string())
+                            .collect();
                         base_cmd.validate_args(&args)?;
                         return base_cmd.execute(&mut self.state, &args);
                     }
