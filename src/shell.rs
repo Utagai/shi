@@ -240,3 +240,42 @@ impl<'a, S> Shell<'a, S> {
         Ok(())
     }
 }
+
+#[cfg(test)]
+pub mod test {
+    use super::*;
+
+    use crate::Result;
+    use crate::{cmd, parent};
+
+    use pretty_assertions::assert_eq;
+
+    // TODO: Replace or add more tests that trigger the full codepath of the shell.
+    #[test]
+    fn issue6() -> Result<()> {
+        let mut shell = Shell::new("| ");
+        shell.register(parent!(
+            "server",
+            cmd!("listen", "Start listening on the given port", |_, args| {
+                Ok(format!("start: {:?}", args))
+            }),
+            cmd!("unlisten", "stop listening", |_, args| {
+                Ok(format!("stop: {:?}", args))
+            })
+        ))?;
+
+        let output = shell.eval("server listen")?;
+        assert_eq!(output, "start: []");
+
+        let output = shell.eval("server listen foo")?;
+        assert_eq!(output, "start: [\"foo\"]");
+
+        let output = shell.eval("server unlisten")?;
+        assert_eq!(output, "stop: []");
+
+        let output = shell.eval("server unlisten foo")?;
+        assert_eq!(output, "stop: [\"foo\"]");
+
+        Ok(())
+    }
+}
