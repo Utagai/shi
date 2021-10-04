@@ -146,8 +146,7 @@ impl<'a, S> Shell<'a, S> {
     }
 
     pub(crate) fn parse<'b>(&mut self, line: &'b str) -> Outcome<'b> {
-        self.parser
-            .parse(&line, &self.cmds.borrow(), &self.builtins)
+        self.parser.parse(line, &self.cmds.borrow(), &self.builtins)
     }
 
     /// Eval executes a single loop of the shell's run-loop.
