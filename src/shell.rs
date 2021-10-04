@@ -173,12 +173,8 @@ impl<'a, S> Shell<'a, S> {
                 // things. We should avoid doing this.
                 if let Some(base_cmd_name) = outcome.cmd_path.first() {
                     if let Some(base_cmd) = self.cmds.borrow().get(base_cmd_name) {
-                        let args: Vec<String> = outcome
-                            .cmd_path
-                            .iter()
-                            .skip(1)
-                            .map(|s| s.to_string())
-                            .collect();
+                        let args: Vec<String> =
+                            line.split(' ').skip(1).map(|s| s.to_string()).collect();
                         base_cmd.validate_args(&args)?;
                         return base_cmd.execute(&mut self.state, &args);
                     }

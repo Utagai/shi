@@ -8,12 +8,12 @@ fn main() -> Result<()> {
     let mut shell = Shell::new("| ");
     shell.register(parent!(
         "server",
-        cmd!("listen", "Start listening on the given port", |_, _| {
-            println!("hello world start");
+        cmd!("listen", "Start listening on the given port", |_, args| {
+            println!("hello world start: {:?}", args);
             Ok("start".to_string())
         }),
-        cmd!("unlisten", "stop listening", |_, _| {
-            println!("hello world stopp");
+        cmd!("unlisten", "stop listening", |_, args| {
+            println!("hello world stop: {:?}", args);
             Ok("stop".to_string())
         })
     ))?;
