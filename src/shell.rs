@@ -260,9 +260,9 @@ impl<'a, S> Shell<'a, S> {
     /// errors and do _not_ cause a return from this method.
     pub fn run(&mut self) -> Result<()> {
         while !self.terminate {
-            let user_terminated = self.update()?;
+            let update_again = self.update()?;
 
-            if user_terminated {
+            if ! update_again {
                 break;
             }
         }
