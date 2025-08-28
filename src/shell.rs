@@ -204,15 +204,19 @@ impl<'a, S> Shell<'a, S> {
         }
     }
 
-    /// Executes the shell's run-loop.
+
+    /// Executes the shell's run-loop but only once.
     ///
-    /// This will run indefinitely until the user exits, otherwise terminates the shell or
-    /// process or the shell encounters an error and stops.
-    ///
-    /// Note that invalid command invocations, e.g., nonexistent commands, are not considered fatal
-    /// errors and do _not_ cause a return from this method.
-    pub fn run(&mut self) -> Result<()> {
-        while !self.terminate {
+    /// This relies on the caller to call it repeatedly to keep the shell operational.
+    /// 
+    /// Returns 
+    ///     - Ok(true) on successful service. Caller should call update again.
+    ///     - Ok(false) on successful service, but request by user to exit the shell.
+    ///     - Err on any unhandled errors that should terminate the shell. This should result in no
+    ///       longer calling update by the caller.
+    /// 
+    pub fn update(&mut self) -> Result<bool> {
+        if !self.terminate {
             let input = self.rl.readline(self.prompt);
 
             match input {
@@ -222,20 +226,48 @@ impl<'a, S> Shell<'a, S> {
                 },
                 Err(ReadlineError::Interrupted) => {
                     println!("-> CTRL+C; bye.");
-                    break;
+                    return Ok(false);
                 }
                 Err(ReadlineError::Eof) => {
                     println!("-> CTRL+D; bye.");
-                    break;
+                    return Ok(false);
                 }
                 Err(err) => {
                     println!("Error: {:?}", err);
-                    break;
+                    return Err(ShiError::general(err.to_string()));
                 }
             }
         }
 
+        Ok(true)
+    }
+
+    /// The caller calls this after update routines finish servicing. This performs final computations
+    /// before exit.
+    pub fn finish(&mut self) -> Result<()> {
+
         self.save_history()?;
+
+        Ok(())
+    }
+
+    /// Executes the shell's run-loop.
+    ///
+    /// This will run indefinitely until the user exits, otherwise terminates the shell or
+    /// process or the shell encounters an error and stops.
+    ///
+    /// Note that invalid command invocations, e.g., nonexistent commands, are not considered fatal
+    /// errors and do _not_ cause a return from this method.
+    pub fn run(&mut self) -> Result<()> {
+        while !self.terminate {
+            let update_again = self.update()?;
+
+            if ! update_again {
+                break;
+            }
+        }
+
+        self.finish()?;
 
         Ok(())
     }
