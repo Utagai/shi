@@ -340,8 +340,8 @@ mod test {
                         @
                         Run 'helptree' for more info on the entire command tree.
                         @"#
-                .replace("@", "")
-                .replace("                        ", ""),
+            .replace("@", "")
+            .replace("                        ", ""),
         )
     }
 }

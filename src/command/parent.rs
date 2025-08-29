@@ -64,16 +64,14 @@ impl<'a, S> ParentCommand<'a, S> {
 
         match self.sub_cmds.get(first_arg) {
             Some(cmd) => Ok(cmd),
-            None => {
-                Err(ShiError::InvalidSubCommand {
-                    got: first_arg.to_string(),
-                    expected: self
-                        .sub_commands()
-                        .iter()
-                        .map(|cmd| cmd.name().to_string())
-                        .collect::<Vec<String>>(),
-                })
-            }
+            None => Err(ShiError::InvalidSubCommand {
+                got: first_arg.to_string(),
+                expected: self
+                    .sub_commands()
+                    .iter()
+                    .map(|cmd| cmd.name().to_string())
+                    .collect::<Vec<String>>(),
+            }),
         }
     }
 

@@ -204,40 +204,41 @@ impl<'a, S> Shell<'a, S> {
         }
     }
 
-
     /// Executes the shell's run-loop but only once.
     ///
     /// This relies on the caller to call it repeatedly to keep the shell operational.
-    /// 
+    ///
     /// Note that this blocks on reading a line from the user.
-    /// 
-    /// Returns 
-    ///     - Ok(true) on successful service. Caller should call update again.
-    ///     - Ok(false) on successful service, but request by user to exit the shell.
+    ///
+    /// Returns
+    ///     - Ok(true), update can be called again to continue service
+    ///     - Ok(false), service terminated. update should not be called again.
     ///     - Err on any unhandled errors that should terminate the shell. This should result in no
     ///       longer calling update by the caller.
-    /// 
+    ///
     pub fn update(&mut self) -> Result<bool> {
-        if !self.terminate {
-            let input = self.rl.readline(self.prompt);
+        if self.terminate {
+            return Ok(false);
+        }
 
-            match input {
-                Ok(line) => match self.eval(&line) {
-                    Ok(output) => println!("{}", output),
-                    Err(err) => println!("Error: {}", err),
-                },
-                Err(ReadlineError::Interrupted) => {
-                    println!("-> CTRL+C; bye.");
-                    return Ok(false);
-                }
-                Err(ReadlineError::Eof) => {
-                    println!("-> CTRL+D; bye.");
-                    return Ok(false);
-                }
-                Err(err) => {
-                    println!("Error: {:?}", err);
-                    return Err(ShiError::general(err.to_string()));
-                }
+        let input = self.rl.readline(self.prompt);
+
+        match input {
+            Ok(line) => match self.eval(&line) {
+                Ok(output) => println!("{}", output),
+                Err(err) => println!("Error: {}", err),
+            },
+            Err(ReadlineError::Interrupted) => {
+                println!("-> CTRL+C; bye.");
+                return Ok(false);
+            }
+            Err(ReadlineError::Eof) => {
+                println!("-> CTRL+D; bye.");
+                return Ok(false);
+            }
+            Err(err) => {
+                println!("Error: {:?}", err);
+                return Err(ShiError::general(err.to_string()));
             }
         }
 
@@ -247,7 +248,6 @@ impl<'a, S> Shell<'a, S> {
     /// The caller calls this after update routines finish servicing. This performs final computations
     /// before exit.
     pub fn finish(&mut self) -> Result<()> {
-
         self.save_history()?;
 
         Ok(())
@@ -261,10 +261,10 @@ impl<'a, S> Shell<'a, S> {
     /// Note that invalid command invocations, e.g., nonexistent commands, are not considered fatal
     /// errors and do _not_ cause a return from this method.
     pub fn run(&mut self) -> Result<()> {
-        while !self.terminate {
+        loop {
             let update_again = self.update()?;
 
-            if ! update_again {
+            if !update_again {
                 break;
             }
         }
