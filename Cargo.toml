@@ -24,3 +24,6 @@ colored = "2.0.0"
 [dev-dependencies]
 anyhow = "1.0.36"
 pretty_assertions = "0.6.1"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin_include)'] }

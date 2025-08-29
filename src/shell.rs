@@ -47,7 +47,7 @@ impl<'a> Shell<'a, ()> {
     ///
     /// # Arguments
     /// `prompt` - The prompt to display to the user.
-    pub fn new(prompt: &'a str) -> Shell<()> {
+    pub fn new(prompt: &'a str) -> Shell<'a, ()> {
         let cmds = Rc::new(RefCell::new(CommandSet::new()));
         let builtins = Rc::new(Shell::build_builtins());
         Shell {
@@ -83,7 +83,7 @@ impl<'a, S> Shell<'a, S> {
     /// # Arguments
     /// `prompt` - The prompt to display to the user.
     /// `state` - The state that the `Shell` should persist across command invocations.
-    pub fn new_with_state(prompt: &'a str, state: S) -> Shell<S>
+    pub fn new_with_state(prompt: &'a str, state: S) -> Shell<'a, S>
     where
         S: 'a,
     {

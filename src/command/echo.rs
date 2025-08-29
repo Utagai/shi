@@ -12,7 +12,7 @@ use crate::Result;
 ///
 /// As the name suggests, this command simply echos back whatever arguments it receives.
 pub struct EchoCommand<S> {
-    phantom: PhantomData<S>,
+    _phantom: PhantomData<S>,
 }
 
 impl<S> Default for EchoCommand<S> {
@@ -25,7 +25,7 @@ impl<S> EchoCommand<S> {
     /// Creates a new EchoCommand.
     pub fn new() -> EchoCommand<S> {
         EchoCommand {
-            phantom: PhantomData,
+            _phantom: PhantomData,
         }
     }
 }

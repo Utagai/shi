@@ -94,7 +94,7 @@ impl<'a, S> CommandSet<'a, S> {
     ///
     /// # Returns
     /// `CommandSetIterator` - An iterator over this `CommandSet`.
-    pub fn iter(&self) -> CommandSetIterator<S> {
+    pub fn iter(&'a self) -> CommandSetIterator<'a, S> {
         CommandSetIterator {
             iter: self.order.iter(),
             cmds: self,

@@ -101,12 +101,12 @@ impl<'a, S> BaseCommand for Command<'a, S> {
 ///
 /// There are two cases that case occur:
 /// * `PartialArgCompletion` - The last argument is partially typed and can be completed to full.
-/// PartialArgCompletion contains the suffix which, when append to the partial argument,
-/// provides the full argument.
+///   PartialArgCompletion contains the suffix which, when append to the partial argument,
+///   provides the full argument.
 /// * `Possibilities` - The arguments are complete, and there are guesses as to what the next
-/// argument could be.
+///   argument could be.
 /// * `Nothing` - There are no completions to provide, either because there is no
-/// autocompletion, or because the command and its arguments are complete already.
+///   autocompletion, or because the command and its arguments are complete already.
 #[derive(Debug, PartialEq)]
 pub enum Completion {
     PartialArgCompletion(Vec<String>),
