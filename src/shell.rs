@@ -209,6 +209,8 @@ impl<'a, S> Shell<'a, S> {
     ///
     /// This relies on the caller to call it repeatedly to keep the shell operational.
     /// 
+    /// Note that this blocks on reading a line from the user.
+    /// 
     /// Returns 
     ///     - Ok(true) on successful service. Caller should call update again.
     ///     - Ok(false) on successful service, but request by user to exit the shell.
