@@ -119,6 +119,8 @@ bye
 This is my first Rust crate, so I welcome any and all feedback, even from fellow newbies.
 There is no process for this though. Just open an issue or a PR. :slightly_smiling_face:
 
+Please follow instructions in [CONTRIBUTING.md](./CONTRIBUTING.md) for pre-commit hook installation.
+
 ## Documentation
 
 Docs are hosted at [docs.rs/shi](https://docs.rs/shi/).
