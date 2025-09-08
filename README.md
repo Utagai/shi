@@ -117,9 +117,10 @@ bye
 ## Contributing
 
 This is my first Rust crate, so I welcome any and all feedback, even from fellow newbies.
-There is no process for this though. Just open an issue or a PR. :slightly_smiling_face:
 
-Please follow instructions in [CONTRIBUTING.md](./CONTRIBUTING.md) for pre-commit hook installation.
+For any problems or suggestions, feel free to [open an issue](https://github.com/Utagai/shi/issues/new)!
+
+If you wish to open a PR, please follow instructions in [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Documentation
 
