@@ -36,7 +36,6 @@ struct QuoteLoc {
 struct QuotePair {
     start: usize,
     end: usize,
-    _quotation: char,
 }
 
 #[derive(Debug, PartialEq)]
@@ -133,7 +132,6 @@ impl DefaultTokenizer {
                     quote_pairs.push(QuotePair {
                         start: start.pos,
                         end: current.pos,
-                        _quotation: current.quotation,
                     });
                     next_idx = Some(i + 1);
                     break;

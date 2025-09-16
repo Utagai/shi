@@ -325,7 +325,6 @@ pub mod test {
             self.name
         }
 
-        #[cfg(not(tarpaulin_include))]
         fn validate_args(&self, _: &[String]) -> Result<()> {
             Ok(())
         }
@@ -365,7 +364,6 @@ pub mod test {
             }
         }
 
-        #[cfg(not(tarpaulin_include))]
         fn execute(&self, _: &mut S, _: &[String]) -> Result<String> {
             Ok(String::from(""))
         }

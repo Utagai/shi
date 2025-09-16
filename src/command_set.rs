@@ -155,12 +155,10 @@ mod test {
             self.name
         }
 
-        #[cfg(not(tarpaulin_include))]
         fn validate_args(&self, _: &[String]) -> Result<()> {
             Ok(())
         }
 
-        #[cfg(not(tarpaulin_include))]
         fn execute(&self, _: &mut Self::State, _: &[String]) -> Result<String> {
             Ok(String::from(""))
         }
