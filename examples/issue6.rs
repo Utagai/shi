@@ -5,7 +5,7 @@ use anyhow::Result;
 
 fn main() -> Result<()> {
     println!("configure cli functions");
-    let mut shell = Shell::new("| ");
+    let mut shell = Shell::new("| ")?;
     shell.register(parent!(
         "server",
         cmd!("listen", "Start listening on the given port", |_, args| {

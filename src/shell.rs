@@ -47,19 +47,21 @@ impl<'a> Shell<'a, ()> {
     ///
     /// # Arguments
     /// `prompt` - The prompt to display to the user.
-    pub fn new(prompt: &'a str) -> Shell<()> {
+    pub fn new(prompt: &'a str) -> Result<Shell<()>> {
         let cmds = Rc::new(RefCell::new(CommandSet::new()));
+
         let builtins = Rc::new(Shell::build_builtins());
-        Shell {
+
+        Ok(Shell {
             prompt,
-            rl: Readline::new(Parser::new(), cmds.clone(), builtins.clone()),
+            rl: Readline::new(Parser::new(), cmds.clone(), builtins.clone())?,
             parser: Parser::new(),
             cmds,
             builtins,
             history_file: None,
             state: (),
             terminate: false,
-        }
+        })
     }
 }
 
@@ -83,22 +85,24 @@ impl<'a, S> Shell<'a, S> {
     /// # Arguments
     /// `prompt` - The prompt to display to the user.
     /// `state` - The state that the `Shell` should persist across command invocations.
-    pub fn new_with_state(prompt: &'a str, state: S) -> Shell<S>
+    pub fn new_with_state(prompt: &'a str, state: S) -> Result<Shell<S>>
     where
         S: 'a,
     {
         let cmds = Rc::new(RefCell::new(CommandSet::new()));
+
         let builtins = Rc::new(Shell::build_builtins());
-        Shell {
+
+        Ok(Shell {
             prompt,
-            rl: Readline::new(Parser::new(), cmds.clone(), builtins.clone()),
+            rl: Readline::new(Parser::new(), cmds.clone(), builtins.clone())?,
             parser: Parser::new(),
             cmds,
             builtins,
             history_file: None,
             state,
             terminate: false,
-        }
+        })
     }
 
     /// Registers the given command under this `Shell`.
@@ -204,17 +208,16 @@ impl<'a, S> Shell<'a, S> {
         }
     }
 
-
     /// Executes the shell's run-loop but only once.
     ///
     /// This relies on the caller to call it repeatedly to keep the shell operational.
-    /// 
-    /// Returns 
+    ///
+    /// Returns
     ///     - Ok(true) on successful service. Caller should call update again.
     ///     - Ok(false) on successful service, but request by user to exit the shell.
     ///     - Err on any unhandled errors that should terminate the shell. This should result in no
     ///       longer calling update by the caller.
-    /// 
+    ///
     pub fn update(&mut self) -> Result<bool> {
         if !self.terminate {
             let input = self.rl.readline(self.prompt);
@@ -245,7 +248,6 @@ impl<'a, S> Shell<'a, S> {
     /// The caller calls this after update routines finish servicing. This performs final computations
     /// before exit.
     pub fn finish(&mut self) -> Result<()> {
-
         self.save_history()?;
 
         Ok(())
@@ -262,7 +264,7 @@ impl<'a, S> Shell<'a, S> {
         while !self.terminate {
             let update_again = self.update()?;
 
-            if ! update_again {
+            if !update_again {
                 break;
             }
         }
@@ -285,7 +287,7 @@ pub mod test {
     // TODO: Replace or add more tests that trigger the full codepath of the shell.
     #[test]
     fn issue6() -> Result<()> {
-        let mut shell = Shell::new("| ");
+        let mut shell = Shell::new("| ")?;
         shell.register(parent!(
             "server",
             cmd!("listen", "Start listening on the given port", |_, args| {

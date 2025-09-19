@@ -100,7 +100,7 @@ impl BaseCommand for PickyCommand {
 fn main() -> Result<()> {
     let counter: u64 = 0;
 
-    let mut shell = Shell::new_with_state("| ", counter);
+    let mut shell = Shell::new_with_state("| ", counter)?;
 
     shell.register(leaf!(PickyCommand::new()))?;
 

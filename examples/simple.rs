@@ -5,7 +5,7 @@ use anyhow::Result;
 
 fn main() -> Result<()> {
     // Instantiate a shell, with the prompt '| '.
-    let mut shell = Shell::new("| ");
+    let mut shell = Shell::new("| ")?;
 
     // Register a basic leaf (no subcommands) command. It is called dog, and it prints out "woof"
     // when executed.
