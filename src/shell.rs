@@ -47,7 +47,7 @@ impl<'a> Shell<'a, ()> {
     ///
     /// # Arguments
     /// `prompt` - The prompt to display to the user.
-    pub fn new(prompt: &'a str) -> Result<Shell<()>> {
+    pub fn new(prompt: &'a str) -> Result<Shell<'a, ()>> {
         let cmds = Rc::new(RefCell::new(CommandSet::new()));
 
         let builtins = Rc::new(Shell::build_builtins());
@@ -85,7 +85,7 @@ impl<'a, S> Shell<'a, S> {
     /// # Arguments
     /// `prompt` - The prompt to display to the user.
     /// `state` - The state that the `Shell` should persist across command invocations.
-    pub fn new_with_state(prompt: &'a str, state: S) -> Result<Shell<S>>
+    pub fn new_with_state(prompt: &'a str, state: S) -> Result<Shell<'a, S>>
     where
         S: 'a,
     {
@@ -161,7 +161,8 @@ impl<'a, S> Shell<'a, S> {
     /// # Arguments
     /// `line` - The line to evaluate.
     pub fn eval(&mut self, line: &str) -> Result<String> {
-        self.rl.add_history_entry(line);
+        self.rl.add_history_entry(line)?;
+
         let outcome = self.parse(line);
 
         if !outcome.complete {

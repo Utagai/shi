@@ -98,7 +98,7 @@ impl<'a, S> Readline<'a, S> {
     ///
     /// # Returns
     /// `rustyline::history::History` - The history of invoked commands.
-    pub fn history(&self) -> &rustyline::history::History {
+    pub fn history(&self) -> &dyn rustyline::history::History {
         self.rl.history()
     }
 }
