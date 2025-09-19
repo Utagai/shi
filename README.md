@@ -118,9 +118,9 @@ bye
 
 This is my first Rust crate, so I welcome any and all feedback, even from fellow newbies.
 
-For any problems or suggestions, feel free to [open an issue](https://github.com/Utagai/shi/issues/new)!
+If you encounter any issues or have suggestions, please [open an issue](https://github.com/Utagai/shi/issues/new).
 
-If you wish to open a PR, please follow instructions in [CONTRIBUTING.md](./CONTRIBUTING.md).
+To contribute changes, please follow the instructions in [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Documentation
 

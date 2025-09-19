@@ -1,15 +1,22 @@
-# Contributing changes
+# Contributing Changes
 
-Please [open an issue](https://github.com/Utagai/shi/issues/new) for your feature request or problem. If you would like to contribute modifications, you can then open a PR that references and addresses that issue.
+Thank you for your interest in contributing to this project!
 
-# Setting up pre-commit hooks
+If you have a feature request or encounter a problem, please [open an issue](https://github.com/Utagai/shi/issues/new) first.
 
-Please follow [pre-commit](https://pre-commit.com/#install) installation instructions.
+Once the issue is created, you can open a pull request (PR) that references and resolves it.
 
-Then in the repository, install the pre-commit hooks with
+# Setting Up pre-commit Hooks
+
+Install [pre-commit](https://pre-commit.com/#install), then run:
 
 ```sh
 pre-commit install
 ```
 
-This ensures before a commit that tests run, formatting is applied, and clippy lints are checked.
+This sets up Git hooks to automatically:
+- Run tests
+- Apply code formatting
+- Check clippy lints
+
+And you're all set!
