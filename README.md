@@ -23,7 +23,7 @@ example, I only recently learned about the [Rust API
 Guidelines](https://rust-lang.github.io/api-guidelines/checklist.html). I'm
 probably breaking some rules there that are worth fixing.
 
-I'm likely the only person using his crate, so I won't know what other features
+I'm likely the only person using this crate, so I won't know what other features
 or changes would be nice to have for people. Feel free to suggest some (or put
 up a PR).
 
