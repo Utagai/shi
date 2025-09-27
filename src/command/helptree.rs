@@ -33,7 +33,7 @@ use crate::Result;
 /// ```
 pub struct HelpTreeCommand<'a, S> {
     // TODO: Not sure if we need this crap.
-    phantom: &'a PhantomData<S>,
+    _phantom: &'a PhantomData<S>,
 }
 
 #[derive(Clone)]
@@ -96,7 +96,7 @@ impl<'a, S> HelpTreeCommand<'a, S> {
     /// Creates a new HelpTreeCommand.
     pub fn new() -> HelpTreeCommand<'a, S> {
         HelpTreeCommand {
-            phantom: &PhantomData,
+            _phantom: &PhantomData,
         }
     }
 
@@ -113,7 +113,7 @@ impl<'a, S> HelpTreeCommand<'a, S> {
     ///
     /// * `ctx` - The context of where in the tree we are adding lines to.
     /// * `lines` - The lines of the helptree visualization. It is added to, and includes the
-    /// entire tree by the end of this function.
+    ///   entire tree by the end of this function.
     /// * `name` - The name of a command to add.
     fn add_name_to_lines(&self, ctx: &IndentContext, lines: &mut Vec<String>, name: &str) {
         // This is not to be confused with `lines`. Think of this as the columns; merging the
@@ -163,9 +163,9 @@ impl<'a, S> HelpTreeCommand<'a, S> {
     ///
     /// * `ctx` - The context of where in the tree we are adding lines to.
     /// * `lines` - The lines of the helptree visualization. It is added to, and includes the
-    /// entire tree by the end of this function.
+    ///   entire tree by the end of this function.
     /// * `cmds` - The set of Commands for which to create and add lines of the helptree
-    /// visualization.
+    ///   visualization.
     fn add_tree_lines_for_children<T>(
         &self,
         ctx: &IndentContext,

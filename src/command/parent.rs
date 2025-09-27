@@ -56,29 +56,27 @@ impl<'a, S> ParentCommand<'a, S> {
     ///
     /// # Arguments
     /// `args` - The arguments that this command was invoked with.
-    fn get_sub_cmd_for_args(&self, args: &[String]) -> Result<&Command<S>> {
-        let first_arg = match args.get(0) {
+    fn get_sub_cmd_for_args(&'a self, args: &[String]) -> Result<&'a Command<'a, S>> {
+        let first_arg = match args.first() {
             Some(arg) => arg,
             None => return Err(ShiError::NoArgs),
         };
 
         match self.sub_cmds.get(first_arg) {
             Some(cmd) => Ok(cmd),
-            None => {
-                return Err(ShiError::InvalidSubCommand {
-                    got: first_arg.to_string(),
-                    expected: self
-                        .sub_commands()
-                        .iter()
-                        .map(|cmd| cmd.name().to_string())
-                        .collect::<Vec<String>>(),
-                })
-            }
+            None => Err(ShiError::InvalidSubCommand {
+                got: first_arg.to_string(),
+                expected: self
+                    .sub_commands()
+                    .iter()
+                    .map(|cmd| cmd.name().to_string())
+                    .collect::<Vec<String>>(),
+            }),
         }
     }
 
     /// Returns a `CommandSet` of the child commands under this `ParentCommand`.
-    pub fn sub_commands(&self) -> &CommandSet<S> {
+    pub fn sub_commands(&'a self) -> &'a CommandSet<'a, S> {
         &self.sub_cmds
     }
 }
@@ -119,7 +117,7 @@ impl<'a, S> BaseCommand for ParentCommand<'a, S> {
     fn execute(&self, state: &mut S, args: &[String]) -> Result<String> {
         let sub_cmd = self.get_sub_cmd_for_args(args)?;
 
-        sub_cmd.execute(state, &args[1..].to_vec())
+        sub_cmd.execute(state, &args[1..])
     }
 
     fn help(&self) -> String {

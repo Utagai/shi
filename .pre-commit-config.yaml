@@ -1,0 +1,28 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.2.0
+    hooks:
+      - id: trailing-whitespace
+      - id: check-yaml
+      - id: check-added-large-files
+  - repo: local
+    hooks:
+      - id: rustfmt
+        name: Check formatting
+        entry: cargo +nightly fmt --
+        language: system
+        files: \.rs$
+      - id: tests
+        name: Run tests
+        entry: cargo test --all-targets --all-features
+        language: system
+        files: \.rs$
+        pass_filenames: false
+      - id: clippy
+        name: Run Clippy
+        entry: cargo clippy --all-targets --all-features -- -D warnings
+        language: system
+        files: \.rs$
+        pass_filenames: false

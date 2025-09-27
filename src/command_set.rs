@@ -94,7 +94,7 @@ impl<'a, S> CommandSet<'a, S> {
     ///
     /// # Returns
     /// `CommandSetIterator` - An iterator over this `CommandSet`.
-    pub fn iter(&self) -> CommandSetIterator<S> {
+    pub fn iter(&'a self) -> CommandSetIterator<'a, S> {
         CommandSetIterator {
             iter: self.order.iter(),
             cmds: self,
@@ -155,12 +155,10 @@ mod test {
             self.name
         }
 
-        #[cfg(not(tarpaulin_include))]
         fn validate_args(&self, _: &[String]) -> Result<()> {
             Ok(())
         }
 
-        #[cfg(not(tarpaulin_include))]
         fn execute(&self, _: &mut Self::State, _: &[String]) -> Result<String> {
             Ok(String::from(""))
         }

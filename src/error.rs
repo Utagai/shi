@@ -28,8 +28,8 @@ pub enum ShiError {
 
 impl ShiError {
     pub fn general<S: AsRef<str>>(msg: S) -> ShiError {
-        return ShiError::General {
+        ShiError::General {
             msg: msg.as_ref().to_string(),
-        };
+        }
     }
 }

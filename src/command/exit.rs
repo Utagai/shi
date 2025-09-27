@@ -9,7 +9,7 @@ use crate::Result;
 #[derive(Debug)]
 /// ExitCommand is a command that triggers a termination of the shell.
 pub struct ExitCommand<'a, S> {
-    phantom: &'a PhantomData<S>,
+    _phantom: &'a PhantomData<S>,
 }
 
 impl<'a, S> Default for ExitCommand<'a, S> {
@@ -22,7 +22,7 @@ impl<'a, S> ExitCommand<'a, S> {
     /// Creates a new ExitCommand.
     pub fn new() -> ExitCommand<'a, S> {
         ExitCommand {
-            phantom: &PhantomData,
+            _phantom: &PhantomData,
         }
     }
 }
