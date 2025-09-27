@@ -15,7 +15,7 @@ use crate::Result;
 /// includes it in the output.
 pub struct HelpCommand<'a, S> {
     // TODO: Not sure if we need this crap.
-    phantom: &'a PhantomData<S>,
+    _phantom: &'a PhantomData<S>,
 }
 
 impl<'a, S> Default for HelpCommand<'a, S> {
@@ -28,7 +28,7 @@ impl<'a, S> HelpCommand<'a, S> {
     /// Creates a new HelpCommand.
     pub fn new() -> HelpCommand<'a, S> {
         HelpCommand {
-            phantom: &PhantomData,
+            _phantom: &PhantomData,
         }
     }
 
@@ -104,7 +104,7 @@ impl<'a, S> HelpCommand<'a, S> {
 
         // Now that we've parsed the args as a command invocation, we can offer a detailed help
         // break down for the command path:
-        return match outcome.cmd_type {
+        match outcome.cmd_type {
             CommandType::Custom => {
                 self.help_breakdown(outcome.cmd_path, outcome.remaining, &shell.cmds.borrow())
             }
@@ -114,7 +114,7 @@ impl<'a, S> HelpCommand<'a, S> {
             CommandType::Unknown => Err(outcome
                 .error()
                 .expect("unknown command type, but could not produce error")),
-        };
+        }
     }
 }
 
@@ -176,12 +176,10 @@ mod test {
             self.name
         }
 
-        #[cfg(not(tarpaulin_include))]
         fn validate_args(&self, _: &[String]) -> Result<()> {
             Ok(())
         }
 
-        #[cfg(not(tarpaulin_include))]
         fn execute(&self, _: &mut S, _: &[String]) -> Result<String> {
             Ok(String::from(""))
         }
@@ -336,17 +334,14 @@ mod test {
     fn invalid_command_invocation() -> Result<()> {
         run_help_test(
             vec![String::from("DNE")],
-            String::from(
-                "\
-                command failed to parse: \'DNE\' is not a recognized command.\n\n\t \
-
-
-                    => expected one of \'leaf\' or \'foo\'.\n\n\
-
-
-                Run \'helptree\' for more info on the entire command tree.\n\
-                ",
-            ),
+            r#"command failed to parse: 'DNE' is not a recognized command.
+                        @
+                        @	 => expected one of 'leaf' or 'foo'.
+                        @
+                        Run 'helptree' for more info on the entire command tree.
+                        @"#
+            .replace("@", "")
+            .replace("                        ", ""),
         )
     }
 }

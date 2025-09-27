@@ -117,7 +117,10 @@ bye
 ## Contributing
 
 This is my first Rust crate, so I welcome any and all feedback, even from fellow newbies.
-There is no process for this though. Just open an issue or a PR. :slightly_smiling_face:
+
+If you encounter any issues or have suggestions, please [open an issue](https://github.com/Utagai/shi/issues/new).
+
+To contribute changes, please follow the instructions in [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Documentation
 

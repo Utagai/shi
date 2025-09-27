@@ -36,7 +36,6 @@ struct QuoteLoc {
 struct QuotePair {
     start: usize,
     end: usize,
-    quotation: char,
 }
 
 #[derive(Debug, PartialEq)]
@@ -54,12 +53,12 @@ enum Blob<'a> {
 #[cfg(test)]
 impl<'a> Blob<'a> {
     /// Constructs a Normal blob.
-    fn n(s: &str) -> Blob {
+    fn n(s: &'a str) -> Blob<'a> {
         Blob::Normal(s)
     }
 
     /// Constructs a Quoted blob.
-    fn q(s: &str) -> Blob {
+    fn q(s: &'a str) -> Blob<'a> {
         Blob::Quoted(s)
     }
 }
@@ -133,7 +132,6 @@ impl DefaultTokenizer {
                     quote_pairs.push(QuotePair {
                         start: start.pos,
                         end: current.pos,
-                        quotation: current.quotation,
                     });
                     next_idx = Some(i + 1);
                     break;

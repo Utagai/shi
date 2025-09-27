@@ -24,13 +24,13 @@ pub enum CommandType {
 /// from the parse:
 ///
 /// * `cmd_path` - The components of the command invocation. In particular, it shows the chain of
-/// ancestry in terms of `Parent` commands and the eventual `Leaf` command.
+///   ancestry in terms of `Parent` commands and the eventual `Leaf` command.
 /// * `remaining` - The remaining components of the string. In the case of a successful parse, this
-/// represents the arguments passed to the command. In the case of unsuccessful or incomplete
-/// parses, this represents the part of the input string that was not able to be parsed.
+///   represents the arguments passed to the command. In the case of unsuccessful or incomplete
+///   parses, this represents the part of the input string that was not able to be parsed.
 /// * `cmd_type` - The type of the command. See `CommandType`.
 /// * `possibilities` - Includes the potential candidates that the parser is expecting to see
-/// following the input line.
+///   following the input line.
 /// * `complete` - A flag denoting whether we had a successful and complete parse.
 pub struct Outcome<'a> {
     pub cmd_path: Vec<&'a str>,
@@ -76,7 +76,7 @@ impl<'a> Outcome<'a> {
             // If the `cmd_path` is empty, this implies we immediately failed the parse, and it was
             // not at least partially complete. This then implies that the first element of the
             // remaining components must be the thing we failed to parse as a recognized command.
-            if let Some(first_remaining_word) = self.remaining.get(0) {
+            if let Some(first_remaining_word) = self.remaining.first() {
                 msg.push_str(&format!(
                     "'{}' is not a recognized command.",
                     first_remaining_word
@@ -102,7 +102,7 @@ impl<'a> Outcome<'a> {
 
             msg += "expected a valid subcommand\n";
             msg += "instead, got: ";
-            if let Some(first_remaining_word) = self.remaining.get(0) {
+            if let Some(first_remaining_word) = self.remaining.first() {
                 msg += &format!("'{}';\n", first_remaining_word);
             } else {
                 msg += "nothing;\n"
@@ -298,7 +298,7 @@ pub mod test {
     }
 
     impl<'a, S> ParseTestCommand<'a, S> {
-        fn new(name: &str) -> ParseTestCommand<S> {
+        fn new(name: &'a str) -> ParseTestCommand<'a, S> {
             ParseTestCommand {
                 name,
                 autocompletions: Vec::new(),
@@ -325,7 +325,6 @@ pub mod test {
             self.name
         }
 
-        #[cfg(not(tarpaulin_include))]
         fn validate_args(&self, _: &[String]) -> Result<()> {
             Ok(())
         }
@@ -365,7 +364,6 @@ pub mod test {
             }
         }
 
-        #[cfg(not(tarpaulin_include))]
         fn execute(&self, _: &mut S, _: &[String]) -> Result<String> {
             Ok(String::from(""))
         }
@@ -811,7 +809,7 @@ pub mod test {
 
             assert_eq!(
                 outcome.error_msg(),
-                vec![
+                [
                     "Failed to parse fully:\n",
                     "\n",
                     "\t    (spaces trimmed)\n",
@@ -840,7 +838,7 @@ pub mod test {
 
             assert_eq!(
                 outcome.error_msg(),
-                vec![
+                [
                     "Failed to parse fully:\n",
                     "\n",
                     "\t    (spaces trimmed)\n",
@@ -875,7 +873,7 @@ pub mod test {
 
             assert_eq!(
                 outcome.error_msg(),
-                vec![
+                [
                     "Empty string could not be parsed as a command.\n",
                     "\n",
                     "\t => expected one of 'conflict-tie' or 'conflict-builtin-longer-match-but-still-loses' or 'conflict-custom-wins' or 'foo-c' or 'grault-c'.",
@@ -900,7 +898,7 @@ pub mod test {
 
             assert_eq!(
                 outcome.error_msg(),
-                vec![
+                [
                     "'notfound' is not a recognized command.\n",
                     "Run 'helptree' for more info on the entire command tree.\n",
                 ]

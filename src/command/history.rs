@@ -13,7 +13,7 @@ use crate::Result;
 ///
 /// Repeated, subsequent command invocations are a single entry in the history.
 pub struct HistoryCommand<'a, S> {
-    phantom: &'a PhantomData<S>,
+    _phantom: &'a PhantomData<S>,
 }
 
 impl<'a, S> Default for HistoryCommand<'a, S> {
@@ -26,7 +26,7 @@ impl<'a, S> HistoryCommand<'a, S> {
     /// Creates a new HistoryCommand.
     pub fn new() -> HistoryCommand<'a, S> {
         HistoryCommand {
-            phantom: &PhantomData,
+            _phantom: &PhantomData,
         }
     }
 }
