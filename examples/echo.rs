@@ -6,7 +6,7 @@ use anyhow::Result;
 
 fn main() -> Result<()> {
     // Instantiate a shell, with the prompt '| '.
-    let mut shell = Shell::new("| ");
+    let mut shell = Shell::new("| ")?;
 
     shell.register(leaf!(EchoCommand::new()))?;
 

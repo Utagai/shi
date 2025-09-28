@@ -20,7 +20,7 @@ use crate::Result;
 
 /// A wrapper around `rustyline::Editor`.
 pub struct Readline<'a, S> {
-    rl: Editor<ExecHelper<'a, S>>,
+    rl: Editor<ExecHelper<'a, S>, rustyline::history::DefaultHistory>,
 }
 
 impl<'a, S> Readline<'a, S> {
@@ -29,13 +29,16 @@ impl<'a, S> Readline<'a, S> {
         parser: Parser,
         cmds: Rc<RefCell<CommandSet<'a, S>>>,
         builtins: Rc<CommandSet<'a, Shell<'a, S>>>,
-    ) -> Readline<'a, S> {
+    ) -> Result<Readline<'a, S>> {
         let config = Config::builder()
             .completion_type(rustyline::CompletionType::List)
             .build();
-        let mut rl = Editor::with_config(config);
+
+        let mut rl = Editor::with_config(config)?;
+
         rl.set_helper(Some(ExecHelper::new(parser, cmds, builtins)));
-        Readline { rl }
+
+        Ok(Readline { rl })
     }
 
     /// Loads the readline history from the given file.
@@ -58,7 +61,10 @@ impl<'a, S> Readline<'a, S> {
 
     /// Adds a history entry to the history. This is done in memory. Persistence is achieved via
     /// `save_history()`.
-    pub fn add_history_entry<E: AsRef<str> + Into<String>>(&mut self, line: E) -> bool {
+    pub fn add_history_entry<E: AsRef<str> + Into<String>>(
+        &mut self,
+        line: E,
+    ) -> rustyline::Result<bool> {
         self.rl.add_history_entry(line)
     }
 
@@ -92,7 +98,7 @@ impl<'a, S> Readline<'a, S> {
     ///
     /// # Returns
     /// `rustyline::history::History` - The history of invoked commands.
-    pub fn history(&self) -> &rustyline::history::History {
+    pub fn history(&self) -> &dyn rustyline::history::History {
         self.rl.history()
     }
 }
@@ -162,8 +168,8 @@ impl<'a, S> Highlighter for ExecHelper<'a, S> {
         self.highlighter.highlight(line, pos)
     }
 
-    fn highlight_char(&self, line: &str, pos: usize) -> bool {
-        self.highlighter.highlight_char(line, pos)
+    fn highlight_char(&self, line: &str, pos: usize, kind: rustyline::highlight::CmdKind) -> bool {
+        self.highlighter.highlight_char(line, pos, kind)
     }
 
     fn highlight_hint<'h>(&self, hint: &'h str) -> Cow<'h, str> {

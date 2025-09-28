@@ -17,8 +17,8 @@ exclude = [
 
 [dependencies]
 thiserror = "2"
-rustyline = "7.1.0"
-rustyline-derive = "0.4.0"
+rustyline = "17.0.1"
+rustyline-derive = "0.11.1"
 colored = "2.0.0"
 
 [dev-dependencies]

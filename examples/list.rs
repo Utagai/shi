@@ -6,7 +6,7 @@ use anyhow::Result;
 fn main() -> Result<()> {
     let lst: Vec<String> = Vec::new();
 
-    let mut shell = Shell::new_with_state("| ", lst);
+    let mut shell = Shell::new_with_state("| ", lst)?;
 
     shell.register(cmd!(
         "pop",

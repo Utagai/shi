@@ -47,19 +47,21 @@ impl<'a> Shell<'a, ()> {
     ///
     /// # Arguments
     /// `prompt` - The prompt to display to the user.
-    pub fn new(prompt: &'a str) -> Shell<'a, ()> {
+    pub fn new(prompt: &'a str) -> Result<Shell<'a, ()>> {
         let cmds = Rc::new(RefCell::new(CommandSet::new()));
+
         let builtins = Rc::new(Shell::build_builtins());
-        Shell {
+
+        Ok(Shell {
             prompt,
-            rl: Readline::new(Parser::new(), cmds.clone(), builtins.clone()),
+            rl: Readline::new(Parser::new(), cmds.clone(), builtins.clone())?,
             parser: Parser::new(),
             cmds,
             builtins,
             history_file: None,
             state: (),
             terminate: false,
-        }
+        })
     }
 }
 
@@ -83,22 +85,24 @@ impl<'a, S> Shell<'a, S> {
     /// # Arguments
     /// `prompt` - The prompt to display to the user.
     /// `state` - The state that the `Shell` should persist across command invocations.
-    pub fn new_with_state(prompt: &'a str, state: S) -> Shell<'a, S>
+    pub fn new_with_state(prompt: &'a str, state: S) -> Result<Shell<'a, S>>
     where
         S: 'a,
     {
         let cmds = Rc::new(RefCell::new(CommandSet::new()));
+
         let builtins = Rc::new(Shell::build_builtins());
-        Shell {
+
+        Ok(Shell {
             prompt,
-            rl: Readline::new(Parser::new(), cmds.clone(), builtins.clone()),
+            rl: Readline::new(Parser::new(), cmds.clone(), builtins.clone())?,
             parser: Parser::new(),
             cmds,
             builtins,
             history_file: None,
             state,
             terminate: false,
-        }
+        })
     }
 
     /// Registers the given command under this `Shell`.
@@ -157,7 +161,8 @@ impl<'a, S> Shell<'a, S> {
     /// # Arguments
     /// `line` - The line to evaluate.
     pub fn eval(&mut self, line: &str) -> Result<String> {
-        self.rl.add_history_entry(line);
+        self.rl.add_history_entry(line)?;
+
         let outcome = self.parse(line);
 
         if !outcome.complete {
@@ -287,7 +292,7 @@ pub mod test {
     // TODO: Replace or add more tests that trigger the full codepath of the shell.
     #[test]
     fn issue6() -> Result<()> {
-        let mut shell = Shell::new("| ");
+        let mut shell = Shell::new("| ")?;
         shell.register(parent!(
             "server",
             cmd!("listen", "Start listening on the given port", |_, args| {

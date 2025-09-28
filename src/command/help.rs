@@ -191,7 +191,7 @@ mod test {
 
     fn run_help_test(args: Vec<String>, expected: String) -> Result<()> {
         // TODO: Do we really need to make a shell to test this? Is this a code-smell?
-        let mut shell = Shell::new("");
+        let mut shell = Shell::new("")?;
         shell.register(leaf!(TestCommand::new("leaf", "1")))?;
         shell.register(parent!(
             "foo",
@@ -212,11 +212,13 @@ mod test {
         Ok(())
     }
 
-    fn run_help_test_no_cmds(args: Vec<String>, expected: String) {
+    fn run_help_test_no_cmds(args: Vec<String>, expected: String) -> Result<()> {
         // TODO: Do we really need to make a shell to test this? Is this a code-smell?
-        let mut shell = Shell::new("");
+        let mut shell = Shell::new("")?;
 
         verify_help_output(&mut shell, args, expected);
+
+        Ok(())
     }
 
     fn verify_help_output(shell: &mut Shell<()>, args: Vec<String>, expected: String) {
@@ -263,7 +265,7 @@ mod test {
                     \'exit\' - Exits the shell session\n\t\
                     \'history\' - Prints the history of commands\
             "),
-        )
+        ).expect("Failed to run test for help with no cmds")
     }
 
     // NOTE: In some of the tests below, we can't use escaped multi-line strings because the escape

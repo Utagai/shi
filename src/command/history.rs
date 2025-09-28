@@ -49,16 +49,24 @@ impl<'a, S> BaseCommand for HistoryCommand<'a, S> {
     }
 
     fn execute(&self, shell: &mut Shell<S>, _: &[String]) -> Result<String> {
-        // A bit of a mouthful. We grab the underlying history of the shell, iterate it, map the
-        // elements to strings, then collection them into a vector of Strings before we join them
-        // with a newline + tab.
-        let history_output = shell
-            .rl
-            .history()
-            .iter()
-            .map(|h| h.to_string())
-            .collect::<Vec<String>>()
-            .join("\n\t");
+        // A bit of a mouthful. We grab the underlying history of the shell, collect its elements
+        // as strings in a vector, then join them with a newline + tab.
+
+        let history = shell.rl.history();
+
+        let history_elements = {
+            let mut mut_history_elements = vec![];
+
+            for i in 0..history.len() {
+                if let Some(elem) = history.get(i, rustyline::history::SearchDirection::Forward)? {
+                    mut_history_elements.push(elem.entry.to_string());
+                }
+            }
+
+            mut_history_elements
+        };
+
+        let history_output = history_elements.join("\n\t");
 
         // Add an extra tab because the first line won't have the join separator attached, and will
         // therefore only have the \n from the print.
